@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import com.github.damontecres.stashapp.R
 import com.github.damontecres.stashapp.StashApplication
+import com.github.damontecres.stashapp.api.fragment.ImageData
 import com.github.damontecres.stashapp.api.fragment.MarkerData
 import com.github.damontecres.stashapp.api.fragment.SlimSceneData
 import com.github.damontecres.stashapp.api.fragment.StashData
@@ -78,9 +79,8 @@ class DefaultLongClicker(
                 } else {
                     add(
                         DialogItem(context.getString(R.string.go_to), Icons.Default.Info) {
-                            itemOnClick.onClick(
-                                item,
-                                filterAndPosition,
+                            nav.navigate(
+                                Destination.fromStashData(item),
                             )
                         },
                     )
@@ -185,8 +185,8 @@ fun buildLongClickActionList(
     listOf(
         LongClickerAction<Any>(
             R.string.go_to,
-            { true },
-            { item, fp -> itemOnClicker.onClick(item, fp!!) },
+            { it is StashData && it !is ImageData },
+            { item, _ -> nav.navigate(Destination.fromStashData(item as StashData)) },
         ),
         LongClickerAction<Any>(
             R.string.play_scene,

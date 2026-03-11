@@ -8,6 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.asLiveData
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.coroutineScope
 import com.apollographql.apollo.api.Query
 import com.github.damontecres.stashapp.StashApplication
 import com.github.damontecres.stashapp.api.fragment.GalleryData
@@ -37,6 +38,8 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -68,8 +71,15 @@ class ImageDetailsViewModel : ViewModel() {
 
     var slideshowDelay by Delegates.notNull<Long>()
 
+    private val _scrollToPage = MutableSharedFlow<Int>(extraBufferCapacity = 1)
+    val scrollToPage: SharedFlow<Int> = _scrollToPage
+    var useHorizontalPager = false
+
     val pager = MutableLiveData<ComposePager<ImageData>>()
     val position = MutableLiveData(0)
+
+    private var _initialFilter: FilterArgs? = null
+    val currentFilter: FilterArgs get() = pager.value?.filter ?: _initialFilter!!
 
     private val _image = MutableLiveData<ImageData>()
     val image: LiveData<ImageData> = _image
@@ -96,10 +106,13 @@ class ImageDetailsViewModel : ViewModel() {
         slideshow: Boolean,
         slideshowDelay: Long,
         saveFilters: Boolean,
+        useHorizontalPager: Boolean = false,
     ): ImageDetailsViewModel {
         Log.v(TAG, "View model init")
         this.saveFilters = saveFilters
         this.slideshowDelay = slideshowDelay
+        this.useHorizontalPager = useHorizontalPager
+        this._initialFilter = filterArgs
         if (pager.value?.filter != filterArgs || server != this.server) {
             if (filterArgs.dataType != DataType.IMAGE) {
                 throw IllegalArgumentException("Cannot use ${filterArgs.dataType}")
@@ -159,10 +172,21 @@ class ImageDetailsViewModel : ViewModel() {
         return this
     }
 
+    fun peekImage(offset: Int): ImageData? {
+        val targetPos = (position.value ?: 0) + offset
+        return pager.value?.let { p ->
+            if (targetPos in 0 until p.size) p[targetPos] else null
+        }
+    }
+
     fun nextImage(): Boolean {
         val size = pager.value?.size
         val newPosition = position.value!! + 1
         return if (size != null && newPosition < size) {
+            peekImage(1)?.let { image ->
+                _image.value = image
+                loadingState.value = ImageLoadingState.Success(image)
+            }
             updatePosition(newPosition)
             true
         } else {
@@ -173,6 +197,10 @@ class ImageDetailsViewModel : ViewModel() {
     fun previousImage(): Boolean {
         val newPosition = position.value!! - 1
         return if (newPosition >= 0) {
+            peekImage(-1)?.let { image ->
+                _image.value = image
+                loadingState.value = ImageLoadingState.Success(image)
+            }
             updatePosition(newPosition)
             true
         } else {
@@ -180,9 +208,12 @@ class ImageDetailsViewModel : ViewModel() {
         }
     }
 
+    private var updatePositionJob: Job? = null
+
     fun updatePosition(position: Int) {
+        updatePositionJob?.cancel()
         pager.value?.let { pager ->
-            viewModelScope.launch(StashCoroutineExceptionHandler()) {
+            updatePositionJob = viewModelScope.launch(StashCoroutineExceptionHandler()) {
                 try {
                     val image = pager.getBlocking(position)
                     Log.v(TAG, "Got image for $position: ${image != null}")
@@ -197,49 +228,55 @@ class ImageDetailsViewModel : ViewModel() {
                         // reset image filter
                         updateImageFilter(galleryImageFilter)
                         if (saveFilters) {
-                            viewModelScope.launchIO(StashCoroutineExceptionHandler()) {
-                                val vf =
+                            val vf =
+                                withContext(Dispatchers.IO) {
                                     StashApplication
                                         .getDatabase()
                                         .playbackEffectsDao()
                                         .getPlaybackEffect(server!!.url, image.id, DataType.IMAGE)
-                                if (vf != null && vf.videoFilter.hasImageFilter()) {
-                                    Log.d(
-                                        TAG,
-                                        "Loaded VideoFilter for image ${image.id}",
-                                    )
-                                    withContext(Dispatchers.Main) {
-                                        // Pause throttling so that the image loads with the filter applied immediately
-                                        imageFilter.stopThrottling(true)
-                                        updateImageFilter(vf.videoFilter)
-                                        imageFilter.startThrottling()
-                                    }
                                 }
-                                withContext(Dispatchers.Main) {
-                                    _image.value = image
-                                    loadingState.value = ImageLoadingState.Success(image)
-                                }
+                            if (vf != null && vf.videoFilter.hasImageFilter()) {
+                                Log.d(
+                                    TAG,
+                                    "Loaded VideoFilter for image ${image.id}",
+                                )
+                                // Pause throttling so that the image loads with the filter applied immediately
+                                imageFilter.stopThrottling(true)
+                                updateImageFilter(vf.videoFilter)
+                                imageFilter.startThrottling()
                             }
+                            _image.value = image
+                            loadingState.value = ImageLoadingState.Success(image)
                         } else {
                             _image.value = image
                             loadingState.value = ImageLoadingState.Success(image)
                         }
-                        if (image.tags.isNotEmpty()) {
-                            tags.value =
-                                queryEngine.getTags(image.tags.map { it.id })
-                            Log.v(TAG, "Got ${tags.value?.size} tags")
-                        }
-                        if (image.performers.isNotEmpty()) {
-                            performers.value =
-                                queryEngine.findPerformers(performerIds = image.performers.map { it.id })
-                        }
-                        if (image.galleries.isNotEmpty()) {
-                            galleries.value =
-                                queryEngine.findGalleries(galleryIds = image.galleries.map { it.id })
+                        coroutineScope {
+                            if (image.tags.isNotEmpty()) {
+                                launch {
+                                    tags.value =
+                                        queryEngine.getTags(image.tags.map { it.id })
+                                    Log.v(TAG, "Got ${tags.value?.size} tags")
+                                }
+                            }
+                            if (image.performers.isNotEmpty()) {
+                                launch {
+                                    performers.value =
+                                        queryEngine.findPerformers(performerIds = image.performers.map { it.id })
+                                }
+                            }
+                            if (image.galleries.isNotEmpty()) {
+                                launch {
+                                    galleries.value =
+                                        queryEngine.findGalleries(galleryIds = image.galleries.map { it.id })
+                                }
+                            }
                         }
                     } else {
                         loadingState.value = ImageLoadingState.Error
                     }
+                } catch (ex: CancellationException) {
+                    throw ex
                 } catch (ex: Exception) {
                     loadingState.value = ImageLoadingState.Error
                     LoggingCoroutineExceptionHandler(
@@ -371,7 +408,14 @@ class ImageDetailsViewModel : ViewModel() {
                         delay(milliseconds)
                         Log.v(TAG, "pulseSlideshow after delay")
                         if (slideshowActive.value == true) {
-                            nextImage()
+                            if (useHorizontalPager) {
+                                val next = (position.value ?: 0) + 1
+                                if (next < (pager.value?.size ?: 0)) {
+                                    _scrollToPage.tryEmit(next)
+                                }
+                            } else {
+                                nextImage()
+                            }
                         }
                     }.apply {
                         invokeOnCompletion { if (it !is CancellationException) pulseSlideshow() }

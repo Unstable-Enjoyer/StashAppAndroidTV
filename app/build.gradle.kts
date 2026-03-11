@@ -289,6 +289,8 @@ dependencies {
     implementation(libs.coil.network.cachecontrol)
     implementation(libs.coil.svg)
     implementation(libs.coil.gif)
+    implementation(libs.telephoto.zoomable)
+    implementation(libs.telephoto.zoomable.image.coil3)
     implementation(libs.navigation.reimagined)
     coreLibraryDesugaring(libs.desugar.jdk.libs)
     implementation(libs.restring)
@@ -296,6 +298,8 @@ dependencies {
     implementation(libs.reword)
     implementation(libs.androidx.datastore)
     implementation(libs.protobuf.kotlin.lite)
+    implementation(libs.multiplatform.markdown.renderer)
+    implementation(libs.multiplatform.markdown.renderer.m3)
 
     if (ffmpegModuleExists || isCI) {
         implementation(files("libs/lib-decoder-ffmpeg-release.aar"))

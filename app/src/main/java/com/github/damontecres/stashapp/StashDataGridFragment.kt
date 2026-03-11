@@ -202,8 +202,13 @@ class StashDataGridFragment :
             (cardSize * (ScenePresenter.CARD_WIDTH.toDouble() / dataType.defaultCardWidth)).toInt()
 
         if (onItemViewClickedListener == null) {
+            val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
             onItemViewClickedListener =
-                NavigationOnItemViewClickedListener(serverViewModel.navigationManager) {
+                NavigationOnItemViewClickedListener(
+                    serverViewModel.navigationManager,
+                    quickPlay = prefs.getBoolean(getString(R.string.pref_key_quick_play), true),
+                    alwaysStartFromBeginning = serverViewModel.requireServer().serverPreferences.alwaysStartFromBeginning,
+                ) {
                     FilterAndPosition(viewModel.filterArgs.value!!, selectedPosition)
                 }
         }

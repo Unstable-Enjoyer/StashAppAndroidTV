@@ -46,6 +46,8 @@ abstract class PlaylistFragment<T : Query.Data, D : StashData, C : Query.Data> :
 
     private val playlistListFragment = PlaylistListFragment<T, D, C>()
 
+    private var consecutiveErrors = 0
+
     // Pages are 1-indexed
     private var currentPage = 1
     private var totalCount = -1
@@ -102,10 +104,27 @@ abstract class PlaylistFragment<T : Query.Data, D : StashData, C : Query.Data> :
         StashExoPlayer.addListener(
             object : Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    // If there is an error, just skip the video
-                    seekToNext()
-                    prepare()
-                    playWhenReady = true
+                    consecutiveErrors++
+                    if (consecutiveErrors < MAX_CONSECUTIVE_ERRORS && hasNextMediaItem()) {
+                        seekToNext()
+                        prepare()
+                        playWhenReady = true
+                    } else {
+                        Log.w(TAG, "Stopping after $consecutiveErrors consecutive errors", error)
+                        Toast
+                            .makeText(
+                                requireContext(),
+                                "Playback error: ${error.message}",
+                                Toast.LENGTH_LONG,
+                            ).show()
+                        playWhenReady = false
+                    }
+                }
+
+                override fun onIsPlayingChanged(isPlaying: Boolean) {
+                    if (isPlaying) {
+                        consecutiveErrors = 0
+                    }
                 }
             },
         )
@@ -330,5 +349,6 @@ abstract class PlaylistFragment<T : Query.Data, D : StashData, C : Query.Data> :
     companion object {
         private const val TAG = "PlaylistFragment"
         private const val PAGE_SIZE = 25
+        private const val MAX_CONSECUTIVE_ERRORS = 3
     }
 }

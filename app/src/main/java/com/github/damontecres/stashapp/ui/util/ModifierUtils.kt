@@ -28,6 +28,12 @@ import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.geometry.toRect
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
@@ -226,6 +232,20 @@ fun Modifier.ifElse(
     ifTrueModifier: () -> Modifier,
     ifFalseModifier: Modifier = Modifier,
 ): Modifier = then(if (condition) ifTrueModifier.invoke() else ifFalseModifier)
+
+fun Modifier.applyColorMatrix(matrix: ColorMatrix?): Modifier {
+    if (matrix == null) return this
+    val paint = Paint().apply {
+        colorFilter = ColorFilter.colorMatrix(matrix)
+    }
+    return this.drawWithContent {
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(size.toRect(), paint)
+            this@drawWithContent.drawContent()
+            canvas.restore()
+        }
+    }
+}
 
 fun getPlayDestinationForItem(
     server: StashServer,

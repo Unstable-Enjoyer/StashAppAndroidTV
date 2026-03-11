@@ -20,6 +20,8 @@
     <string name="card_size_medium">Medium</string>
     <string name="card_size_large">Large</string>
     <string name="card_size_extra_large">Extra Large</string>
+    <string name="card_size_huge">Huge</string>
+    <string name="card_size_absurd">Absurd</string>
 
     <string-array name="card_sizes" translatable="false">
         <item>@string/card_size_extra_small</item>
@@ -27,6 +29,8 @@
         <item>@string/card_size_medium</item>
         <item>@string/card_size_large</item>
         <item>@string/card_size_extra_large</item>
+        <item>@string/card_size_huge</item>
+        <item>@string/card_size_absurd</item>
     </string-array>
 
     <string name="card_size_default" translatable="false">5</string>
@@ -36,6 +40,8 @@
         <item>5</item>
         <item>4</item>
         <item>3</item>
+        <item>2</item>
+        <item>1</item>
     </string-array>
 
     <string-array name="video_codecs" translatable="false">

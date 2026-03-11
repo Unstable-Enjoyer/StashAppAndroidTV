@@ -210,8 +210,14 @@ class MainFragment :
             viewModel.navigationManager.navigate(Destination.Search)
         }
 
+        val server = viewModel.requireServer()
+        val prefs = androidx.preference.PreferenceManager.getDefaultSharedPreferences(requireContext())
         onItemViewClickedListener =
-            NavigationOnItemViewClickedListener(viewModel.navigationManager) {
+            NavigationOnItemViewClickedListener(
+                viewModel.navigationManager,
+                quickPlay = prefs.getBoolean(getString(R.string.pref_key_quick_play), true),
+                alwaysStartFromBeginning = server.serverPreferences.alwaysStartFromBeginning,
+            ) {
                 val position = currentPosition!!
                 val filter = filterList[position.row]
                 FilterAndPosition(filter, position.column)

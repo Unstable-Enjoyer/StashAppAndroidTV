@@ -48,6 +48,7 @@ object StashPreferencesSerializer : Serializer<StashPreferences> {
                                 StashPreference.ShowProgressSkipping.defaultValue
                             playMovementSounds = StashPreference.MovementSound.defaultValue
                             captionsByDefault = StashPreference.CaptionsOnByDefault.defaultValue
+                            preventScreenCapture = StashPreference.PreventScreenCapture.defaultValue
                             scrollNextViewAll = StashPreference.ScrollViewAll.defaultValue
                             scrollTopOnBack = StashPreference.ScrollTopOnBack.defaultValue
                             showPositionFooter = StashPreference.ShowGridFooter.defaultValue

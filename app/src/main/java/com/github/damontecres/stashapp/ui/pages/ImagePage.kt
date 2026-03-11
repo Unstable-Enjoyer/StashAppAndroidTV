@@ -17,6 +17,11 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerDefaults
+import androidx.compose.foundation.pager.PagerSnapDistance
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -25,8 +30,10 @@ import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
@@ -61,9 +68,16 @@ import androidx.media3.ui.compose.state.rememberPresentationState
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.SubcomposeAsyncImage
+import coil3.imageLoader
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.size.Size
+import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.ZoomableState
+import me.saket.telephoto.zoomable.coil3.ZoomableAsyncImage
+import me.saket.telephoto.zoomable.rememberZoomableImageState
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 import com.github.damontecres.stashapp.R
 import com.github.damontecres.stashapp.StashExoPlayer
 import com.github.damontecres.stashapp.api.fragment.PerformerData
@@ -87,13 +101,18 @@ import com.github.damontecres.stashapp.ui.components.playback.isDirectionalDpad
 import com.github.damontecres.stashapp.ui.components.playback.isDpad
 import com.github.damontecres.stashapp.ui.components.playback.isEnterKey
 import com.github.damontecres.stashapp.ui.tryRequestFocus
+import com.github.damontecres.stashapp.ui.util.applyColorMatrix
 import com.github.damontecres.stashapp.ui.util.ifElse
 import com.github.damontecres.stashapp.util.StashServer
 import com.github.damontecres.stashapp.util.findActivity
 import com.github.damontecres.stashapp.util.isImageClip
 import com.github.damontecres.stashapp.util.isNotNullOrBlank
 import com.github.damontecres.stashapp.util.keepScreenOn
-import com.github.damontecres.stashapp.util.maxFileSize
+import androidx.compose.animation.core.snap
+import androidx.compose.ui.geometry.Offset
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 private const val TAG = "ImagePage"
@@ -116,6 +135,7 @@ fun ImagePage(
 ) {
     val context = LocalContext.current
     val isNotTvDevice = isNotTvDevice
+    val swipeGallery = uiConfig.preferences.interfacePreferences.swipeGallery
     LaunchedEffect(server, filter) {
         val slideshowDelay = uiConfig.preferences.interfacePreferences.slideShowIntervalMs
 
@@ -126,6 +146,7 @@ fun ImagePage(
             startSlideshow,
             slideshowDelay,
             uiConfig.persistVideoFilters,
+            useHorizontalPager = swipeGallery && isNotTvDevice,
         )
         if (isNotTvDevice) {
             // Reduce the throttling for touch devices since a delay when dragging feels like lag
@@ -193,6 +214,16 @@ fun ImagePage(
     val slideshowActive by viewModel.slideshowActive.observeAsState(false)
 
     val focusRequester = remember { FocusRequester() }
+    val scope = rememberCoroutineScope()
+    var pagerStateRef by remember { mutableStateOf<PagerState?>(null) }
+    var activeZoomableState by remember { mutableStateOf<ZoomableState?>(null) }
+
+    val usesTelephoto = swipeGallery && isNotTvDevice
+    val effectiveIsZoomed = if (usesTelephoto && activeZoomableState != null) {
+        activeZoomableState?.let { it.zoomFraction != null && it.zoomFraction!! > 0f } ?: false
+    } else {
+        isZoomed
+    }
 
     LaunchedEffect(Unit) {
         focusRequester.tryRequestFocus()
@@ -255,8 +286,32 @@ fun ImagePage(
         }
     }
 
+    fun handleZoom(factor: Float) {
+        if (usesTelephoto && activeZoomableState != null) {
+            scope.launch {
+                activeZoomableState?.zoomBy(
+                    zoomFactor = 1f + factor,
+                    centroid = Offset(screenWidth / 2f, screenHeight / 2f),
+                )
+            }
+        } else {
+            zoom(factor)
+        }
+    }
+
+    fun handleReset(resetRotate: Boolean) {
+        if (usesTelephoto && activeZoomableState != null) {
+            scope.launch { activeZoomableState?.resetZoom() }
+            if (resetRotate) rotation = 0f
+        } else {
+            reset(resetRotate)
+        }
+    }
+
     LaunchedEffect(imageState) {
-        reset(true)
+        if (!usesTelephoto) {
+            reset(true)
+        }
     }
     val player =
         remember {
@@ -303,57 +358,84 @@ fun ImagePage(
     val contentModifier =
         Modifier.ifElse(
             isNotTvDevice,
-            Modifier
-                .clickable(
-                    interactionSource = null,
-                    indication = null,
-                    onClick = {
-                        showOverlay = !showOverlay
-                    },
-                ).pointerInput(isZoomed) {
-                    detectTapGestures(
-                        onTap = {
+            if (swipeGallery) {
+                Modifier
+                    .pointerInput(isZoomed) {
+                        detectTapGestures(
+                            onTap = {
+                                showOverlay = !showOverlay
+                            },
+                            onDoubleTap = {
+                                if (!showOverlay) {
+                                    if (isZoomed) {
+                                        reset(false)
+                                    } else {
+                                        zoom(1.5f)
+                                    }
+                                }
+                            },
+                        )
+                    }.ifElse(
+                        condition = isZoomed || showOverlay,
+                        Modifier
+                            .transformable(
+                                state = state,
+                                enabled = !showOverlay,
+                                lockRotationOnZoomPan = true,
+                            ),
+                    )
+            } else {
+                Modifier
+                    .clickable(
+                        interactionSource = null,
+                        indication = null,
+                        onClick = {
                             showOverlay = !showOverlay
                         },
-                        onDoubleTap = {
-                            if (!showOverlay) {
-                                if (isZoomed) {
-                                    reset(false)
-                                } else {
-                                    zoom(1.5f)
-                                }
-                            }
-                        },
-                    )
-                }.ifElse(
-                    condition = isZoomed || showOverlay,
-                    Modifier
-                        .transformable(
-                            state = state,
-                            enabled = !showOverlay,
-                            lockRotationOnZoomPan = true,
-                        ),
-                    Modifier
-                        .transformable(state, lockRotationOnZoomPan = true)
-                        .pointerInput(Unit) {
-                            // TODO use https://developer.android.com/develop/ui/compose/touch-input/pointer-input/drag-swipe-fling#swiping
-                            detectDragGestures(
-                                onDragStart = { dragXAmount = 0f },
-                                onDragCancel = { dragXAmount = 0f },
-                                onDragEnd = {
-                                    if (dragXAmount > 300f) {
-                                        viewModel.previousImage()
-                                    } else if (dragXAmount < -300f) {
-                                        viewModel.nextImage()
+                    ).pointerInput(isZoomed) {
+                        detectTapGestures(
+                            onTap = {
+                                showOverlay = !showOverlay
+                            },
+                            onDoubleTap = {
+                                if (!showOverlay) {
+                                    if (isZoomed) {
+                                        reset(false)
+                                    } else {
+                                        zoom(1.5f)
                                     }
-                                    dragXAmount = 0f
-                                },
-                            ) { change, dragAmount ->
-                                dragXAmount += dragAmount.x
-                                change.consume()
-                            }
-                        },
-                ),
+                                }
+                            },
+                        )
+                    }.ifElse(
+                        condition = isZoomed || showOverlay,
+                        Modifier
+                            .transformable(
+                                state = state,
+                                enabled = !showOverlay,
+                                lockRotationOnZoomPan = true,
+                            ),
+                        Modifier
+                            .transformable(state, lockRotationOnZoomPan = true)
+                            .pointerInput(Unit) {
+                                detectDragGestures(
+                                    onDragStart = { dragXAmount = 0f },
+                                    onDragCancel = { dragXAmount = 0f },
+                                    onDragEnd = {
+                                        if (dragXAmount > 300f) {
+                                            viewModel.previousImage()
+                                        } else if (dragXAmount < -300f) {
+                                            viewModel.nextImage()
+                                        }
+                                        dragXAmount = 0f
+                                    },
+                                ) { change, dragAmount ->
+                                    dragXAmount += dragAmount.x
+                                    change.consume()
+                                }
+                            },
+                    )
+            },
         )
 
     Box(
@@ -376,8 +458,8 @@ fun ImagePage(
                             it.nativeKeyEvent.repeatCount > 0
                         if (longPressing) {
                             when (it.key) {
-                                Key.DirectionUp -> zoom(.05f)
-                                Key.DirectionDown -> zoom(-.05f)
+                                Key.DirectionUp -> handleZoom(.05f)
+                                Key.DirectionDown -> handleZoom(-.05f)
 
                                 // These work, but feel awkward because Up/Down zoom, so you can't long press them to pan
                                 // Key.DirectionLeft -> panX += with(density) { 15.dp.toPx() }
@@ -388,22 +470,37 @@ fun ImagePage(
                     }
                     if (it.type != KeyEventType.KeyUp) {
                         result = false
-                    } else if (!isOverlayShowing && isZoomed && isDirectionalDpad(it)) {
+                    } else if (!isOverlayShowing && effectiveIsZoomed && isDirectionalDpad(it)) {
                         // Image is zoomed in
-                        when (it.key) {
-                            Key.DirectionLeft -> pan(30, 0)
-                            Key.DirectionRight -> pan(-30, 0)
-                            Key.DirectionUp -> pan(0, 30)
-                            Key.DirectionDown -> pan(0, -30)
+                        if (usesTelephoto) {
+                            val panAmount = with(density) { 30.dp.toPx() }
+                            scope.launch {
+                                when (it.key) {
+                                    Key.DirectionLeft -> activeZoomableState?.panBy(Offset(panAmount, 0f))
+                                    Key.DirectionRight -> activeZoomableState?.panBy(Offset(-panAmount, 0f))
+                                    Key.DirectionUp -> activeZoomableState?.panBy(Offset(0f, panAmount))
+                                    Key.DirectionDown -> activeZoomableState?.panBy(Offset(0f, -panAmount))
+                                }
+                            }
+                        } else {
+                            when (it.key) {
+                                Key.DirectionLeft -> pan(30, 0)
+                                Key.DirectionRight -> pan(-30, 0)
+                                Key.DirectionUp -> pan(0, 30)
+                                Key.DirectionDown -> pan(0, -30)
+                            }
                         }
                         result = true
-                    } else if (!isOverlayShowing && isZoomed && it.key == Key.Back) {
-                        reset(false)
+                    } else if (!isOverlayShowing && effectiveIsZoomed && it.key == Key.Back) {
+                        handleReset(false)
                         result = true
                     } else if (!isOverlayShowing && (it.key == Key.DirectionLeft || it.key == Key.DirectionRight)) {
+                        val ps = pagerStateRef
                         when (it.key) {
                             Key.DirectionLeft, Key.DirectionUpLeft, Key.DirectionDownLeft -> {
-                                if (!viewModel.previousImage()) {
+                                if (ps != null) {
+                                    scope.launch { ps.animateScrollToPage(ps.currentPage - 1) }
+                                } else if (!viewModel.previousImage()) {
                                     Toast
                                         .makeText(
                                             context,
@@ -414,7 +511,9 @@ fun ImagePage(
                             }
 
                             Key.DirectionRight, Key.DirectionUpRight, Key.DirectionDownRight -> {
-                                if (!viewModel.nextImage()) {
+                                if (ps != null) {
+                                    scope.launch { ps.animateScrollToPage(ps.currentPage + 1) }
+                                } else if (!viewModel.nextImage()) {
                                     Toast
                                         .makeText(
                                             context,
@@ -441,140 +540,385 @@ fun ImagePage(
                 },
     ) {
         imageState?.let { image ->
-            if (image.paths.image.isNotNullOrBlank()) {
-                if (image.isImageClip) {
-                    LaunchedEffect(image.id) {
-                        val mediaItem =
-                            MediaItem
-                                .Builder()
-                                .setUri(image.paths.image)
-                                .build()
-                        player.setMediaItem(mediaItem)
-                        player.repeatMode =
-                            if (slideshowEnabled) {
-                                Player.REPEAT_MODE_OFF
-                            } else {
-                                Player.REPEAT_MODE_ONE
-                            }
-                        player.prepare()
-                        player.play()
-                        viewModel.pulseSlideshow(Long.MAX_VALUE)
-                    }
-                    LifecycleStartEffect(Unit) {
-                        onStopOrDispose {
-                            player.stop()
+            val imageContent: @Composable () -> Unit = {
+                if (image.paths.image.isNotNullOrBlank()) {
+                    if (image.isImageClip) {
+                        LaunchedEffect(image.id) {
+                            val mediaItem =
+                                MediaItem
+                                    .Builder()
+                                    .setUri(image.paths.image)
+                                    .build()
+                            player.setMediaItem(mediaItem)
+                            player.repeatMode =
+                                if (slideshowEnabled) {
+                                    Player.REPEAT_MODE_OFF
+                                } else {
+                                    Player.REPEAT_MODE_ONE
+                                }
+                            player.prepare()
+                            player.play()
+                            viewModel.pulseSlideshow(Long.MAX_VALUE)
                         }
-                    }
-                    val contentScale = ContentScale.Fit
-                    val scaledModifier =
-                        contentModifier.resizeWithContentScale(
-                            contentScale,
-                            presentationState.videoSizeDp,
+                        LifecycleStartEffect(Unit) {
+                            onStopOrDispose {
+                                player.stop()
+                            }
+                        }
+                        val contentScale = ContentScale.Fit
+                        val scaledModifier =
+                            contentModifier.resizeWithContentScale(
+                                contentScale,
+                                presentationState.videoSizeDp,
+                            )
+                        PlayerSurface(
+                            player = player,
+                            surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+                            modifier =
+                                scaledModifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = zoomAnimation
+                                        scaleY = zoomAnimation
+                                        translationX = panXAnimation
+                                        translationY = panYAnimation
+                                    }.rotate(rotateAnimation),
                         )
-                    PlayerSurface(
-                        player = player,
-                        surfaceType = SURFACE_TYPE_SURFACE_VIEW,
-                        modifier =
-                            scaledModifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = zoomAnimation
-                                    scaleY = zoomAnimation
-                                    translationX = panXAnimation
-                                    translationY = panYAnimation
-                                }.rotate(rotateAnimation),
-                    )
-                    if (presentationState.coverSurface) {
-                        Box(
-                            Modifier
-                                .matchParentSize()
-                                .background(Color.Black),
+                        if (presentationState.coverSurface) {
+                            Box(
+                                Modifier
+                                    .matchParentSize()
+                                    .background(Color.Black),
+                            )
+                        }
+                    } else {
+                        val colorFilter =
+                            remember(image.id, imageFilter) {
+                                if (imageFilter.hasImageFilter()) {
+                                    ColorMatrixColorFilter(imageFilter.createComposeColorMatrix())
+                                } else {
+                                    null
+                                }
+                            }
+                        val showLoadingThumbnail = image.paths.thumbnail.isNotNullOrBlank()
+                        SubcomposeAsyncImage(
+                            modifier =
+                                contentModifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = zoomAnimation
+                                        scaleY = zoomAnimation
+                                        translationX = panXAnimation
+                                        translationY = panYAnimation
+
+                                        val xTransform =
+                                            (screenWidth - panXAnimation) / (screenWidth * 2)
+                                        val yTransform =
+                                            (screenHeight - panYAnimation) / (screenHeight * 2)
+                                        if (DEBUG) {
+                                            Log.d(
+                                                TAG,
+                                                "graphicsLayer: xTransform=$xTransform, yTransform=$yTransform",
+                                            )
+                                        }
+
+                                        transformOrigin = TransformOrigin(xTransform, yTransform)
+                                    }.rotate(rotateAnimation),
+                            model =
+                                ImageRequest
+                                    .Builder(LocalContext.current)
+                                    .data(image.paths.image)
+                                    .size(Size.ORIGINAL)
+                                    .crossfade(false)
+                                    .build(),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            colorFilter = colorFilter,
+                            error = {
+                                Text(
+                                    modifier =
+                                        Modifier
+                                            .align(Alignment.Center),
+                                    text = "Error loading image",
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                            },
+                            loading = {
+                                ImageLoadingPlaceholder(
+                                    thumbnailUrl = image.paths.thumbnail,
+                                    showThumbnail = showLoadingThumbnail,
+                                    colorFilter = colorFilter,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            },
+                            // Ensure that if an image takes a long time to load, it won't be skipped
+                            onLoading = {
+                                viewModel.pulseSlideshow(Long.MAX_VALUE)
+                            },
+                            onSuccess = {
+                                viewModel.pulseSlideshow()
+                            },
+                            onError = {
+                                Log.e(TAG, "Error loading image ${image.id}", it.result.throwable)
+                                Toast
+                                    .makeText(
+                                        context,
+                                        "Error loading image: ${it.result.throwable.localizedMessage}",
+                                        Toast.LENGTH_LONG,
+                                    ).show()
+                                viewModel.pulseSlideshow()
+                            },
                         )
                     }
                 } else {
-                    val colorFilter =
-                        remember(image.id, imageFilter) {
-                            if (imageFilter.hasImageFilter()) {
-                                ColorMatrixColorFilter(imageFilter.createComposeColorMatrix())
-                            } else {
-                                null
-                            }
-                        }
-                    // If the image loading is large, show the thumbnail while waiting
-                    val showLoadingThumbnail =
-                        image.paths.thumbnail.isNotNullOrBlank() && image.maxFileSize > 1024 * 1024
-                    SubcomposeAsyncImage(
-                        modifier =
-                            contentModifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = zoomAnimation
-                                    scaleY = zoomAnimation
-                                    translationX = panXAnimation
-                                    translationY = panYAnimation
+                    // TODO
+                    Text("No image URL")
+                }
+            }
 
-                                    val xTransform =
-                                        (screenWidth - panXAnimation) / (screenWidth * 2)
-                                    val yTransform =
-                                        (screenHeight - panYAnimation) / (screenHeight * 2)
-                                    if (DEBUG) {
-                                        Log.d(
-                                            TAG,
-                                            "graphicsLayer: xTransform=$xTransform, yTransform=$yTransform",
+            if (swipeGallery && isNotTvDevice) {
+                // HorizontalPager path — persistent composition per page
+                val currentPager = pager
+                if (currentPager != null) {
+                    val pagerState = rememberPagerState(
+                        initialPage = startPosition,
+                        pageCount = { currentPager.size },
+                    )
+                    pagerStateRef = pagerState
+
+                    LaunchedEffect(Unit) {
+                        viewModel.scrollToPage.collect { targetPage ->
+                            pagerState.animateScrollToPage(targetPage)
+                        }
+                    }
+
+                    LaunchedEffect(pagerState) {
+                        snapshotFlow { pagerState.settledPage }
+                            .distinctUntilChanged()
+                            .collect { page ->
+                                viewModel.updatePosition(page)
+                                rotation = 0f
+                            }
+                    }
+
+                    // Prefetch thumbnails for N±3 (beyond composed viewport of N±2)
+                    LaunchedEffect(pagerState.settledPage) {
+                        val currentPage = pagerState.settledPage
+                        val imageLoader = context.imageLoader
+                        for (offset in listOf(-3, 3)) {
+                            launch {
+                                val targetPage = currentPage + offset
+                                if (targetPage in 0 until currentPager.size) {
+                                    val pageData = currentPager.get(targetPage)
+                                    val thumbnailUrl = pageData?.paths?.thumbnail
+                                    if (thumbnailUrl.isNotNullOrBlank()) {
+                                        imageLoader.enqueue(
+                                            ImageRequest.Builder(context)
+                                                .data(thumbnailUrl)
+                                                .crossfade(false)
+                                                .build()
                                         )
                                     }
+                                }
+                            }
+                        }
+                    }
 
-                                    transformOrigin = TransformOrigin(xTransform, yTransform)
-                                }.rotate(rotateAnimation),
-                        model =
-                            ImageRequest
-                                .Builder(LocalContext.current)
-                                .data(image.paths.image)
-                                .size(Size.ORIGINAL)
-                                .crossfade(!showLoadingThumbnail)
-                                .build(),
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        colorFilter = colorFilter,
-                        error = {
-                            Text(
-                                modifier =
-                                    Modifier
-                                        .align(Alignment.Center),
-                                text = "Error loading image",
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                        },
-                        loading = {
+                HorizontalPager(
+                    state = pagerState,
+                    beyondViewportPageCount = 2,
+                    flingBehavior = PagerDefaults.flingBehavior(
+                        state = pagerState,
+                        pagerSnapDistance = PagerSnapDistance.atMost(1),
+                    ),
+                    userScrollEnabled = !effectiveIsZoomed && !showOverlay,
+                    modifier = Modifier.fillMaxSize(),
+                ) { pageIndex ->
+                    val pageImageData = currentPager.get(pageIndex)
+                    val isSettledPage = pageIndex == pagerState.settledPage
+
+                    if (pageImageData != null) {
+                        val pageImage = pageImageData
+
+                        if (pageImage.paths.image.isNotNullOrBlank()) {
+                            if (pageImage.isImageClip && isSettledPage) {
+                                LaunchedEffect(pageImage.id) {
+                                    val mediaItem =
+                                        MediaItem
+                                            .Builder()
+                                            .setUri(pageImage.paths.image)
+                                            .build()
+                                    player.setMediaItem(mediaItem)
+                                    player.repeatMode =
+                                        if (slideshowEnabled) {
+                                            Player.REPEAT_MODE_OFF
+                                        } else {
+                                            Player.REPEAT_MODE_ONE
+                                        }
+                                    player.prepare()
+                                    player.play()
+                                    viewModel.pulseSlideshow(Long.MAX_VALUE)
+                                }
+                                LifecycleStartEffect(Unit) {
+                                    onStopOrDispose {
+                                        player.stop()
+                                    }
+                                }
+
+                                LaunchedEffect(Unit) {
+                                    activeZoomableState = null
+                                }
+
+                                Box(Modifier.fillMaxSize()) {
+                                    ImageLoadingPlaceholder(
+                                        thumbnailUrl = pageImage.paths.thumbnail,
+                                        showThumbnail = pageImage.paths.thumbnail.isNotNullOrBlank(),
+                                        colorFilter = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+
+                                    val contentScale = ContentScale.Fit
+                                    PlayerSurface(
+                                        player = player,
+                                        surfaceType = SURFACE_TYPE_SURFACE_VIEW,
+                                        modifier =
+                                            Modifier
+                                                .resizeWithContentScale(
+                                                    contentScale,
+                                                    presentationState.videoSizeDp,
+                                                )
+                                                .fillMaxSize()
+                                                .pointerInput(Unit) {
+                                                    detectTapGestures(onTap = { showOverlay = !showOverlay })
+                                                }
+                                                .graphicsLayer {
+                                                    scaleX = zoomAnimation
+                                                    scaleY = zoomAnimation
+                                                    translationX = panXAnimation
+                                                    translationY = panYAnimation
+                                                }
+                                                .rotate(rotateAnimation),
+                                    )
+                                }
+                            } else if (pageImage.isImageClip) {
+                                // Non-settled clip — show thumbnail with spinner fallback
+                                ImageLoadingPlaceholder(
+                                    thumbnailUrl = pageImage.paths.thumbnail,
+                                    showThumbnail = pageImage.paths.thumbnail.isNotNullOrBlank(),
+                                    colorFilter = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            } else {
+                                // Static image — use ZoomableAsyncImage with sub-sampling
+                                val pageZoomableState = rememberZoomableState(
+                                    zoomSpec = ZoomSpec(maxZoomFactor = 5f)
+                                )
+                                val telephotoImageState = rememberZoomableImageState(pageZoomableState)
+
+                                if (isSettledPage) {
+                                    LaunchedEffect(pageZoomableState) {
+                                        activeZoomableState = pageZoomableState
+                                    }
+                                    DisposableEffect(pageZoomableState) {
+                                        onDispose {
+                                            if (activeZoomableState === pageZoomableState) {
+                                                activeZoomableState = null
+                                            }
+                                        }
+                                    }
+                                }
+
+                                if (!isSettledPage) {
+                                    LaunchedEffect(Unit) {
+                                        pageZoomableState.resetZoom(animationSpec = snap())
+                                    }
+                                }
+
+                                if (isSettledPage) {
+                                    LaunchedEffect(telephotoImageState) {
+                                        viewModel.pulseSlideshow(Long.MAX_VALUE)
+                                        snapshotFlow { telephotoImageState.isImageDisplayed }
+                                            .distinctUntilChanged()
+                                            .collect { displayed ->
+                                                if (displayed) viewModel.pulseSlideshow()
+                                            }
+                                    }
+                                    LaunchedEffect(pageImage.id) {
+                                        delay(10_000)
+                                        if (!telephotoImageState.isImageDisplayed) {
+                                            Log.e(TAG, "Image ${pageImage.id} did not load within timeout")
+                                            viewModel.pulseSlideshow()
+                                        }
+                                    }
+                                }
+
+                                val colorFilterMatrix = if (isSettledPage) {
+                                    remember(pageImage.id, imageFilter) {
+                                        if (imageFilter.hasImageFilter()) imageFilter.createComposeColorMatrix() else null
+                                    }
+                                } else null
+
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .ifElse(isSettledPage, Modifier.rotate(rotateAnimation))
+                                        .applyColorMatrix(colorFilterMatrix)
+                                ) {
+                                    // Thumbnail always present as base layer
+                                    ImageLoadingPlaceholder(
+                                        thumbnailUrl = pageImage.paths.thumbnail,
+                                        showThumbnail = pageImage.paths.thumbnail.isNotNullOrBlank(),
+                                        colorFilter = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                    )
+
+                                    // Load full-res for all composed pages (N±2) so it's
+                                    // already rendered when the user swipes to an adjacent page
+                                    val model = remember(pageImage.id) {
+                                        ImageRequest.Builder(context)
+                                            .data(pageImage.paths.image)
+                                            .crossfade(false)
+                                            .build()
+                                    }
+                                    ZoomableAsyncImage(
+                                        model = model,
+                                        contentDescription = null,
+                                        state = telephotoImageState,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.fillMaxSize(),
+                                        onClick = { showOverlay = !showOverlay },
+                                    )
+                                }
+                            }
+                        } else {
+                            // No image URL
                             ImageLoadingPlaceholder(
-                                thumbnailUrl = image.paths.thumbnail,
-                                showThumbnail = showLoadingThumbnail,
-                                colorFilter = colorFilter,
+                                thumbnailUrl = pageImage.paths.thumbnail,
+                                showThumbnail = pageImage.paths.thumbnail.isNotNullOrBlank(),
+                                colorFilter = null,
                                 modifier = Modifier.fillMaxSize(),
                             )
-                        },
-                        // Ensure that if an image takes a long time to load, it won't be skipped
-                        onLoading = {
-                            viewModel.pulseSlideshow(Long.MAX_VALUE)
-                        },
-                        onSuccess = {
-                            viewModel.pulseSlideshow()
-                        },
-                        onError = {
-                            Log.e(TAG, "Error loading image ${image.id}", it.result.throwable)
-                            Toast
-                                .makeText(
-                                    context,
-                                    "Error loading image: ${it.result.throwable.localizedMessage}",
-                                    Toast.LENGTH_LONG,
-                                ).show()
-                            viewModel.pulseSlideshow()
-                        },
+                        }
+                    } else {
+                        ImageLoadingPlaceholder(
+                            thumbnailUrl = null,
+                            showThumbnail = false,
+                            colorFilter = null,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
+                }
+                } else {
+                    // Show loading placeholder while pager initializes
+                    ImageLoadingPlaceholder(
+                        thumbnailUrl = null,
+                        showThumbnail = false,
+                        colorFilter = null,
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             } else {
-                // TODO
-                Text("No image URL")
+                imageContent()
             }
             val focusManager = LocalFocusManager.current
             AnimatedVisibility(
@@ -599,9 +943,9 @@ fun ImagePage(
                     count = pager?.size ?: -1,
                     itemOnClick = itemOnClick,
                     longClicker = longClicker,
-                    onZoom = ::zoom,
+                    onZoom = ::handleZoom,
                     onRotate = { rotation += it },
-                    onReset = { reset(true) },
+                    onReset = { handleReset(true) },
                     rating100 = rating100,
                     oCount = oCount,
                     uiConfig = uiConfig,
@@ -638,6 +982,19 @@ fun ImagePage(
                         showFilterDialog = true
                         showOverlay = false
                         viewModel.pauseSlideshow()
+                    },
+                    currentSort = viewModel.currentFilter.sortAndDirection,
+                    onSortChange = { newSort ->
+                        val newFilter = viewModel.currentFilter.with(newSort).withResolvedRandom()
+                        viewModel.init(
+                            server,
+                            newFilter,
+                            startPosition = 0,
+                            slideshow = false,
+                            slideshowDelay = uiConfig.preferences.interfacePreferences.slideShowIntervalMs,
+                            saveFilters = uiConfig.persistVideoFilters,
+                            useHorizontalPager = swipeGallery && isNotTvDevice,
+                        )
                     },
                 )
             }

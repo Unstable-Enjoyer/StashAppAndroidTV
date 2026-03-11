@@ -58,7 +58,7 @@ class PlayAllOnClickListener(
                     val filter =
                         when (it) {
                             0 -> filterAndPosition.filter
-                            1 -> filterAndPosition.filter.with(SortAndDirection.random())
+                            1 -> filterAndPosition.filter.with(SortAndDirection.random()).withResolvedRandom()
                             else -> throw IllegalStateException("$it")
                         }
                     navigationManager.navigate(Destination.Playlist(filter, 0))

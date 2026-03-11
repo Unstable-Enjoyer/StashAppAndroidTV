@@ -74,6 +74,7 @@ val basicPreferences =
             R.string.basic_interface,
             listOf(
                 StashPreference.PinCode,
+                StashPreference.PreventScreenCapture,
                 StashPreference.ReadOnlyMode,
                 StashPreference.CardSize,
                 StashPreference.PlayVideoPreviews,
@@ -126,10 +127,13 @@ val uiPreferences =
             R.string.new_ui,
             listOf(
                 StashPreference.UseNewUI,
+                StashPreference.QuickPlay,
+                StashPreference.SwipeGallery,
                 StashPreference.GridJumpButtons,
                 StashPreference.ShowProgressSkipping,
                 StashPreference.MovementSound,
                 StashPreference.UpDownNextPrevious,
+                StashPreference.ContinuousPlayback,
                 StashPreference.CaptionsOnByDefault,
                 StashPreference.ThemeStylePref,
                 StashPreference.ChooseTheme,

@@ -2,6 +2,7 @@ package com.github.damontecres.stashapp.ui.pages
 
 import android.content.Context
 import android.util.Log
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,6 +65,7 @@ import com.github.damontecres.stashapp.api.fragment.PerformerData
 import com.github.damontecres.stashapp.api.fragment.SlimSceneData
 import com.github.damontecres.stashapp.api.fragment.StudioData
 import com.github.damontecres.stashapp.api.fragment.TagData
+import com.github.damontecres.stashapp.navigation.Destination
 import com.github.damontecres.stashapp.navigation.FilterAndPosition
 import com.github.damontecres.stashapp.ui.ComposeUiConfig
 import com.github.damontecres.stashapp.ui.LocalGlobalContext
@@ -365,8 +367,15 @@ fun HomePageRow(
     Column(modifier = modifier) {
         ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground)) {
             Text(
-                modifier = Modifier.padding(top = 20.dp, bottom = 10.dp, start = 16.dp),
-                text = row.name,
+                modifier =
+                    Modifier
+                        .padding(top = 20.dp, bottom = 10.dp, start = 16.dp)
+                        .clickable {
+                            navigationManager.navigate(
+                                Destination.Filter(row.filter, scrollToNextPage = false),
+                            )
+                        },
+                text = "${row.name} \u203A",
             )
         }
         val firstFocus = remember { FocusRequester() }

@@ -55,8 +55,13 @@ class StashSearchFragment :
             val pos = Position(rowNum, col)
             currentPosition = pos
         }
+        val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
         setOnItemViewClickedListener(
-            NavigationOnItemViewClickedListener(serverViewModel.navigationManager) {
+            NavigationOnItemViewClickedListener(
+                serverViewModel.navigationManager,
+                quickPlay = prefs.getBoolean(getString(R.string.pref_key_quick_play), true),
+                alwaysStartFromBeginning = serverViewModel.requireServer().serverPreferences.alwaysStartFromBeginning,
+            ) {
                 val filter =
                     FilterArgs(
                         dataType = DataType.IMAGE,

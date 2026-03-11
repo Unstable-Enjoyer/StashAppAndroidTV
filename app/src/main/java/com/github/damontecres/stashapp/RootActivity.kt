@@ -21,6 +21,7 @@ import androidx.core.widget.ContentLoadingProgressBar
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.media3.common.util.UnstableApi
+import androidx.lifecycle.lifecycleScope
 import androidx.preference.PreferenceManager
 import com.github.damontecres.stashapp.navigation.Destination
 import com.github.damontecres.stashapp.navigation.NavigationListener
@@ -33,7 +34,11 @@ import com.github.damontecres.stashapp.util.animateToInvisible
 import com.github.damontecres.stashapp.util.composeEnabled
 import com.github.damontecres.stashapp.util.isNotNullOrBlank
 import com.github.damontecres.stashapp.util.maybeGetDestination
+import com.github.damontecres.stashapp.util.preferences
 import com.github.damontecres.stashapp.util.putDestination
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import com.github.damontecres.stashapp.views.models.ServerViewModel
 import dev.b3nedikt.restring.Restring
 import kotlin.properties.Delegates
@@ -79,10 +84,26 @@ class RootActivity :
             TAG,
             "onCreate: savedInstanceState==null:${savedInstanceState == null}, currentFragment==null:${currentFragment == null}",
         )
+        // Default to secure until preference is loaded
         window.setFlags(
             WindowManager.LayoutParams.FLAG_SECURE,
             WindowManager.LayoutParams.FLAG_SECURE,
         )
+        lifecycleScope.launch {
+            preferences.data
+                .map { it.interfacePreferences.preventScreenCapture }
+                .distinctUntilChanged()
+                .collect { prevent ->
+                    if (prevent) {
+                        window.setFlags(
+                            WindowManager.LayoutParams.FLAG_SECURE,
+                            WindowManager.LayoutParams.FLAG_SECURE,
+                        )
+                    } else {
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                    }
+                }
+        }
 
         val appHasPin = appHasPin()
 

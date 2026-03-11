@@ -44,6 +44,11 @@ message InterfacePreferences {
   bool page_with_remote_buttons = 21;
 
   bool dpad_skip_indicator = 22;
+  bool quick_play_disabled = 23;
+  bool swipe_gallery = 24;
+  bool smooth_gallery = 25;
+  bool continuous_playback = 26;
+  bool prevent_screen_capture = 27;
 }
 
 enum TabType {

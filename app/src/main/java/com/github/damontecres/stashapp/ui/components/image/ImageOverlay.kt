@@ -32,6 +32,7 @@ import com.github.damontecres.stashapp.api.fragment.StashData
 import com.github.damontecres.stashapp.api.fragment.TagData
 import com.github.damontecres.stashapp.data.DataType
 import com.github.damontecres.stashapp.data.OCounter
+import com.github.damontecres.stashapp.data.SortAndDirection
 import com.github.damontecres.stashapp.filter.extractTitle
 import com.github.damontecres.stashapp.ui.ComposeUiConfig
 import com.github.damontecres.stashapp.ui.compat.isNotTvDevice
@@ -73,6 +74,8 @@ fun ImageOverlay(
     onRotate: (Int) -> Unit,
     onReset: () -> Unit,
     onShowFilterDialogClick: () -> Unit,
+    currentSort: SortAndDirection,
+    onSortChange: (SortAndDirection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -222,6 +225,8 @@ fun ImageOverlay(
                 onZoom = onZoom,
                 onRotate = onRotate,
                 onReset = onReset,
+                currentSort = currentSort,
+                onSortChange = onSortChange,
                 modifier = Modifier,
             )
         }

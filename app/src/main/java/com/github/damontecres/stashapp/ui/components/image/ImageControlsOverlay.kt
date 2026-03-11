@@ -32,10 +32,15 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.github.damontecres.stashapp.R
+import com.github.damontecres.stashapp.api.type.SortDirectionEnum
+import com.github.damontecres.stashapp.data.DataType
+import com.github.damontecres.stashapp.data.SortAndDirection
+import com.github.damontecres.stashapp.data.SortOption
 import com.github.damontecres.stashapp.ui.FontAwesome
 import com.github.damontecres.stashapp.ui.PreviewTheme
 import com.github.damontecres.stashapp.ui.compat.Button
 import com.github.damontecres.stashapp.ui.components.OCounterButton
+import com.github.damontecres.stashapp.ui.components.SortByButton
 import com.github.damontecres.stashapp.ui.tryRequestFocus
 import com.github.damontecres.stashapp.util.StashCoroutineExceptionHandler
 import kotlinx.coroutines.launch
@@ -56,6 +61,9 @@ fun ImageControlsOverlay(
     isPlaying: Boolean,
     playPauseOnClick: () -> Unit,
     bringIntoViewRequester: BringIntoViewRequester?,
+    dataType: DataType,
+    currentSort: SortAndDirection,
+    onSortChange: (SortAndDirection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val focusRequester = remember { FocusRequester() }
@@ -159,6 +167,15 @@ fun ImageControlsOverlay(
                 enabled = oCounterEnabled,
             )
         }
+        // Sort button
+        item {
+            SortByButton(
+                dataType = dataType,
+                current = currentSort,
+                onSortChange = onSortChange,
+                modifier = Modifier.onFocusChanged(onFocused),
+            )
+        }
         // More button
         item {
             Button(
@@ -229,6 +246,9 @@ private fun ImageControlsOverlayPreview() {
             isPlaying = false,
             playPauseOnClick = {},
             bringIntoViewRequester = null,
+            dataType = DataType.IMAGE,
+            currentSort = SortAndDirection(SortOption.Date, SortDirectionEnum.DESC),
+            onSortChange = {},
             modifier = Modifier,
         )
     }

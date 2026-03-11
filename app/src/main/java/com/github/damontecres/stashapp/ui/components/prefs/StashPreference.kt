@@ -130,8 +130,8 @@ sealed interface StashPreference<T> {
                 prefKey = R.string.pref_key_card_size,
                 defaultValue = 5,
                 displayValues = R.array.card_sizes,
-                indexToValue = { listOf(7, 6, 5, 4, 3)[it] },
-                valueToIndex = { listOf(7, 6, 5, 4, 3).indexOf(it) },
+                indexToValue = { listOf(7, 6, 5, 4, 3, 2, 1)[it] },
+                valueToIndex = { listOf(7, 6, 5, 4, 3, 2, 1).indexOf(it) },
                 getter = { it.interfacePreferences.cardSize },
                 setter = { prefs, value ->
                     prefs.updateInterfacePreferences { cardSize = value }
@@ -162,6 +162,42 @@ sealed interface StashPreference<T> {
                 },
                 summaryOn = R.string.play_video_previews_summary_on,
                 summaryOff = R.string.play_video_previews_summary_off,
+            )
+        val QuickPlay =
+            StashSwitchPreference(
+                title = R.string.quick_play,
+                prefKey = R.string.pref_key_quick_play,
+                defaultValue = true,
+                getter = { !it.interfacePreferences.quickPlayDisabled },
+                setter = { prefs, value ->
+                    prefs.updateInterfacePreferences { quickPlayDisabled = !value }
+                },
+                summaryOn = R.string.quick_play_summary_on,
+                summaryOff = R.string.quick_play_summary_off,
+            )
+        val SwipeGallery =
+            StashSwitchPreference(
+                title = R.string.swipe_gallery,
+                prefKey = R.string.pref_key_swipe_gallery,
+                defaultValue = false,
+                getter = { it.interfacePreferences.swipeGallery },
+                setter = { prefs, value ->
+                    prefs.updateInterfacePreferences { swipeGallery = value }
+                },
+                summaryOn = R.string.swipe_gallery_summary_on,
+                summaryOff = R.string.swipe_gallery_summary_off,
+            )
+        val PreventScreenCapture =
+            StashSwitchPreference(
+                title = R.string.prevent_screen_capture,
+                prefKey = R.string.pref_key_prevent_screen_capture,
+                defaultValue = true,
+                getter = { it.interfacePreferences.preventScreenCapture },
+                setter = { prefs, value ->
+                    prefs.updateInterfacePreferences { preventScreenCapture = value }
+                },
+                summaryOn = R.string.prevent_screen_capture_summary_on,
+                summaryOff = R.string.prevent_screen_capture_summary_off,
             )
         val MoreUiSettings =
             StashDestinationPreference(
@@ -496,6 +532,19 @@ sealed interface StashPreference<T> {
                     prefs.updateInterfacePreferences { playMovementSounds = value }
                 },
                 summary = R.string.movement_sounds_summary,
+            )
+
+        val ContinuousPlayback =
+            StashSwitchPreference(
+                title = R.string.continuous_playback,
+                prefKey = R.string.pref_key_continuous_playback,
+                defaultValue = true,
+                getter = { it.interfacePreferences.continuousPlayback },
+                setter = { prefs, value ->
+                    prefs.updateInterfacePreferences { continuousPlayback = value }
+                },
+                summaryOn = R.string.continuous_playback_summary_on,
+                summaryOff = R.string.continuous_playback_summary_off,
             )
 
         val UpDownNextPrevious =

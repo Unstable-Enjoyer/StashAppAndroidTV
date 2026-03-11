@@ -135,6 +135,15 @@
     <string name="manage_servers">Manage Servers</string>
     <string name="add_remove_servers_summary">Add, remove, or change servers</string>
     <string name="play_video_previews">Play video previews</string>
+    <string name="quick_play">Quick play</string>
+    <string name="quick_play_summary_on">Tap scenes and galleries to play/view directly</string>
+    <string name="quick_play_summary_off">Tap scenes and galleries to see details first</string>
+    <string name="swipe_gallery">Swipe gallery</string>
+    <string name="swipe_gallery_summary_on">Tap edges or swipe to navigate between images</string>
+    <string name="swipe_gallery_summary_off">Drag to navigate between images (classic)</string>
+    <string name="prevent_screen_capture">Prevent screen capture</string>
+    <string name="prevent_screen_capture_summary_on">Screenshots and screen recording are blocked</string>
+    <string name="prevent_screen_capture_summary_off">Screenshots and screen recording are allowed</string>
     <string name="more_ui_settings">More UI Settings</string>
     <string name="more_ui_settings_summary">Go to advanced UI settings</string>
     <string name="play_video_previews_summary_on">Video preview will play when item is selected</string>
@@ -241,5 +250,8 @@
     <string name="enable_screensaver">Enable screensaver</string>
     <string name="screensaver_filter">Set filter for screensaver</string>
     <string name="screensaver">Screensaver</string>
+    <string name="continuous_playback">Continuous playback</string>
+    <string name="continuous_playback_summary_on">Skip to next/previous video in the current list</string>
+    <string name="continuous_playback_summary_off">Play single video only</string>
 
 </resources>

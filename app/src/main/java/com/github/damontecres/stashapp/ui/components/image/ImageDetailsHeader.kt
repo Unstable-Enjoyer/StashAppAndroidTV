@@ -44,6 +44,7 @@ import com.github.damontecres.stashapp.api.type.CriterionModifier
 import com.github.damontecres.stashapp.api.type.ImageFilterType
 import com.github.damontecres.stashapp.api.type.StringCriterionInput
 import com.github.damontecres.stashapp.data.DataType
+import com.github.damontecres.stashapp.data.SortAndDirection
 import com.github.damontecres.stashapp.navigation.Destination
 import com.github.damontecres.stashapp.suppliers.FilterArgs
 import com.github.damontecres.stashapp.ui.ComposeUiConfig
@@ -83,6 +84,8 @@ fun ImageDetailsHeader(
     onZoom: (Float) -> Unit,
     onRotate: (Int) -> Unit,
     onReset: () -> Unit,
+    currentSort: SortAndDirection,
+    onSortChange: (SortAndDirection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -292,6 +295,9 @@ fun ImageDetailsHeader(
             playPauseOnClick = playPauseState::onClick,
             isPlaying = playPauseState.showPlay,
             sfwMode = uiConfig.sfwMode,
+            dataType = DataType.IMAGE,
+            currentSort = currentSort,
+            onSortChange = onSortChange,
             modifier =
                 Modifier
                     .fillMaxWidth(),

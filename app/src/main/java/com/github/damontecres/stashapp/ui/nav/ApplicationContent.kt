@@ -14,9 +14,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.window.DialogProperties
 import com.github.damontecres.stashapp.PreferenceScreenOption
+import com.apollographql.apollo.api.Optional
+import com.github.damontecres.stashapp.api.fragment.GalleryData
 import com.github.damontecres.stashapp.api.fragment.ImageData
+import com.github.damontecres.stashapp.api.fragment.SlimSceneData
 import com.github.damontecres.stashapp.api.fragment.StashData
+import com.github.damontecres.stashapp.api.type.CriterionModifier
+import com.github.damontecres.stashapp.api.type.ImageFilterType
+import com.github.damontecres.stashapp.api.type.MultiCriterionInput
 import com.github.damontecres.stashapp.data.DataType
+import com.github.damontecres.stashapp.playback.PlaybackMode
 import com.github.damontecres.stashapp.navigation.Destination
 import com.github.damontecres.stashapp.navigation.FilterAndPosition
 import com.github.damontecres.stashapp.navigation.NavigationManagerCompose
@@ -31,6 +38,7 @@ import com.github.damontecres.stashapp.ui.components.ItemOnClicker
 import com.github.damontecres.stashapp.ui.components.MarkerDurationDialog
 import com.github.damontecres.stashapp.ui.pages.DialogParams
 import com.github.damontecres.stashapp.util.StashServer
+import com.github.damontecres.stashapp.util.resume_position
 import dev.olshevski.navigation.reimagined.NavController
 import dev.olshevski.navigation.reimagined.NavHost
 
@@ -61,6 +69,8 @@ fun ApplicationContent(
 
     val scrollToNextPage = preferences.interfacePreferences.scrollNextViewAll
 
+    val quickPlay = !preferences.interfacePreferences.quickPlayDisabled
+
     val itemOnClick =
         ItemOnClicker { item: Any, filterAndPosition ->
             when (item) {
@@ -79,6 +89,52 @@ fun ApplicationContent(
                         Destination.Slideshow(
                             filter,
                             position,
+                            false,
+                        ),
+                    )
+                }
+
+                is SlimSceneData if quickPlay -> {
+                    val continuousPlayback = preferences.interfacePreferences.continuousPlayback
+                    if (continuousPlayback && filterAndPosition != null) {
+                        navigationManager.navigate(
+                            Destination.Playlist(
+                                filterAndPosition.filter,
+                                filterAndPosition.position,
+                            ),
+                        )
+                    } else {
+                        val position =
+                            if (server.serverPreferences.alwaysStartFromBeginning) {
+                                0L
+                            } else {
+                                item.resume_position ?: 0L
+                            }
+                        navigationManager.navigate(
+                            Destination.Playback(
+                                item.id,
+                                position,
+                                PlaybackMode.Choose,
+                            ),
+                        )
+                    }
+                }
+
+                is GalleryData if quickPlay -> {
+                    val galleries =
+                        Optional.present(
+                            MultiCriterionInput(
+                                value = Optional.present(listOf(item.id)),
+                                modifier = CriterionModifier.INCLUDES_ALL,
+                            ),
+                        )
+                    navigationManager.navigate(
+                        Destination.Slideshow(
+                            FilterArgs(
+                                dataType = DataType.IMAGE,
+                                objectFilter = ImageFilterType(galleries = galleries),
+                            ),
+                            0,
                             false,
                         ),
                     )
