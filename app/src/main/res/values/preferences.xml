@@ -107,5 +107,6 @@
     <string name="pref_key_swipe_gallery" translatable="false">interface.swipeGallery</string>
     <string name="pref_key_continuous_playback" translatable="false">interface.continuousPlayback</string>
     <string name="pref_key_prevent_screen_capture" translatable="false">interface.preventScreenCapture</string>
+    <string name="pref_key_clickable_row_headers" translatable="false">interface.clickableRowHeaders</string>
 
 </resources>

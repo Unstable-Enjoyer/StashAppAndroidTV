@@ -364,18 +364,22 @@ fun HomePageRow(
     modifier: Modifier = Modifier,
 ) {
     val navigationManager = LocalGlobalContext.current.navigationManager
+    val clickableHeaders = uiConfig.preferences.interfacePreferences.clickableRowHeaders
     Column(modifier = modifier) {
         ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground)) {
             Text(
                 modifier =
                     Modifier
                         .padding(top = 20.dp, bottom = 10.dp, start = 16.dp)
-                        .clickable {
-                            navigationManager.navigate(
-                                Destination.Filter(row.filter, scrollToNextPage = false),
-                            )
-                        },
-                text = "${row.name} \u203A",
+                        .ifElse(
+                            clickableHeaders,
+                            Modifier.clickable {
+                                navigationManager.navigate(
+                                    Destination.Filter(row.filter, scrollToNextPage = false),
+                                )
+                            },
+                        ),
+                text = if (clickableHeaders) "${row.name} \u203A" else row.name,
             )
         }
         val firstFocus = remember { FocusRequester() }

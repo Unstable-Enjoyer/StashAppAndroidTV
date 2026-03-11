@@ -29,7 +29,6 @@ import com.github.damontecres.stashapp.ui.pages.SearchPage
 import com.github.damontecres.stashapp.ui.pages.SettingsPage
 import com.github.damontecres.stashapp.ui.pages.StudioPage
 import com.github.damontecres.stashapp.ui.pages.TagPage
-import com.github.damontecres.stashapp.ui.pages.UpdateAppPage
 import com.github.damontecres.stashapp.util.StashServer
 import kotlin.time.Duration.Companion.milliseconds
 import kotlin.time.Duration.Companion.seconds
@@ -85,14 +84,6 @@ fun DestinationContent(
 //                        preventBack = false,
 //                        modifier = Modifier.fillMaxSize(),
 //                    )
-
-        is Destination.UpdateApp -> {
-            UpdateAppPage(
-                composeUiConfig = composeUiConfig,
-                navigationManager = navManager,
-                modifier = modifier,
-            )
-        }
 
         is Destination.Settings -> {
             SettingsPage(

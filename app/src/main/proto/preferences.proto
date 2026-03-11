@@ -46,9 +46,10 @@ message InterfacePreferences {
   bool dpad_skip_indicator = 22;
   bool quick_play_disabled = 23;
   bool swipe_gallery = 24;
-  bool smooth_gallery = 25;
+
   bool continuous_playback = 26;
   bool prevent_screen_capture = 27;
+  bool clickable_row_headers = 28;
 }
 
 enum TabType {

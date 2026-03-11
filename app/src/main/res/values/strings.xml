@@ -250,6 +250,9 @@
     <string name="enable_screensaver">Enable screensaver</string>
     <string name="screensaver_filter">Set filter for screensaver</string>
     <string name="screensaver">Screensaver</string>
+    <string name="clickable_row_headers">Clickable row headers</string>
+    <string name="clickable_row_headers_summary_on">Tap row titles to open full list</string>
+    <string name="clickable_row_headers_summary_off">Row titles are not clickable</string>
     <string name="continuous_playback">Continuous playback</string>
     <string name="continuous_playback_summary_on">Skip to next/previous video in the current list</string>
     <string name="continuous_playback_summary_off">Play single video only</string>

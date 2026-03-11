@@ -128,6 +128,7 @@ val uiPreferences =
             listOf(
                 StashPreference.UseNewUI,
                 StashPreference.QuickPlay,
+                StashPreference.ClickableRowHeaders,
                 StashPreference.SwipeGallery,
                 StashPreference.GridJumpButtons,
                 StashPreference.ShowProgressSkipping,

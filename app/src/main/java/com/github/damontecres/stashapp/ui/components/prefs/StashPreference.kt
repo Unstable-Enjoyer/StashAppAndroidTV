@@ -187,6 +187,18 @@ sealed interface StashPreference<T> {
                 summaryOn = R.string.swipe_gallery_summary_on,
                 summaryOff = R.string.swipe_gallery_summary_off,
             )
+        val ClickableRowHeaders =
+            StashSwitchPreference(
+                title = R.string.clickable_row_headers,
+                prefKey = R.string.pref_key_clickable_row_headers,
+                defaultValue = true,
+                getter = { it.interfacePreferences.clickableRowHeaders },
+                setter = { prefs, value ->
+                    prefs.updateInterfacePreferences { clickableRowHeaders = value }
+                },
+                summaryOn = R.string.clickable_row_headers_summary_on,
+                summaryOff = R.string.clickable_row_headers_summary_off,
+            )
         val PreventScreenCapture =
             StashSwitchPreference(
                 title = R.string.prevent_screen_capture,
