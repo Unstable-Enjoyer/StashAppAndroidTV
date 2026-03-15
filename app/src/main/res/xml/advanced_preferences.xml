@@ -62,6 +62,12 @@
             app:key="@string/pref_key_show_dpad_skip"
             app:title="Show D-Pad skipping indicator"
             app:defaultValue="true" />
+        <SwitchPreference
+            app:key="@string/pref_key_double_tap_seek"
+            app:title="Double-tap to seek"
+            app:summaryOn="Double-tap left/right screen edge to seek"
+            app:summaryOff="Disabled"
+            app:defaultValue="true" />
         <ListPreference
             app:key="@string/pref_key_stream_choice"
             app:title="Stream Choice"

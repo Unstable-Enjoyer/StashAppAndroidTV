@@ -3,11 +3,14 @@ package com.github.damontecres.stashapp
 import android.os.Bundle
 import android.util.Log
 import android.view.KeyEvent
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.addCallback
 import androidx.core.content.ContextCompat
+import androidx.core.view.doOnPreDraw
 import androidx.fragment.app.activityViewModels
 import androidx.fragment.app.commitNow
 import androidx.leanback.app.BrowseSupportFragment
@@ -66,6 +69,21 @@ class MainFragment :
         adapter = rowsAdapter
     }
 
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?,
+    ): View? {
+        val view = super.onCreateView(inflater, container, savedInstanceState)
+        // BrowseSupportFragment.onCreateView resets mSelectedPosition to 0
+        // when savedInstanceState is null (back stack pops). Counteract it
+        // immediately so createMainFragment uses the correct position.
+        if (savedInstanceState == null && currentPosition != null) {
+            setSelectedPosition(currentPosition!!.row, false)
+        }
+        return view
+    }
+
     override fun onViewCreated(
         view: View,
         savedInstanceState: Bundle?,
@@ -113,6 +131,28 @@ class MainFragment :
 //            Log.v(TAG, "$pos")
             backCallback.isEnabled = pos.row > 0 || pos.column > 0
             currentPosition = pos
+        }
+
+        // Column restoration: onCreateView handles row via setSelectedPosition,
+        // but column within the row needs the ViewHolder to exist.
+        val positionToRestore = currentPosition ?: savedInstanceState?.let {
+            val row = it.getInt(STATE_ROW, -1)
+            val col = it.getInt(STATE_COLUMN, -1)
+            if (row >= 0) Position(row, col.coerceAtLeast(0)) else null
+        }
+        if (positionToRestore != null && positionToRestore.column > 0 && rowsAdapter.size() > 0) {
+            view.doOnPreDraw {
+                (selectedRowViewHolder as? ListRowPresenter.ViewHolder)
+                    ?.gridView?.selectedPosition = positionToRestore.column
+            }
+        }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        currentPosition?.let {
+            outState.putInt(STATE_ROW, it.row)
+            outState.putInt(STATE_COLUMN, it.column)
         }
     }
 
@@ -367,5 +407,7 @@ class MainFragment :
 
     companion object {
         private const val TAG = "MainFragment"
+        private const val STATE_ROW = "currentRow"
+        private const val STATE_COLUMN = "currentColumn"
     }
 }

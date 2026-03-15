@@ -125,6 +125,7 @@ abstract class PlaybackFragment(
     protected lateinit var oCounterText: TextView
     private lateinit var moreOptionsButton: ImageButton
     private lateinit var skipIndicator: SkipIndicator
+    private var doubleTapSeekOverlay: DoubleTapSeekOverlay? = null
 
     // Track whether the video is playing before calling the resultLauncher
     protected var wasPlayingBeforeResultLauncher: Boolean? = null
@@ -415,6 +416,7 @@ abstract class PlaybackFragment(
         }
 
         skipIndicator = view.findViewById(R.id.skip_indicator)
+        doubleTapSeekOverlay = view.findViewById(R.id.double_tap_seek_overlay)
         videoView = view.findViewById(R.id.video_view)
         videoView.controllerShowTimeoutMs =
             manager.getInt("controllerShowTimeoutMs", PlayerControlView.DEFAULT_SHOW_TIMEOUT_MS)
@@ -422,6 +424,7 @@ abstract class PlaybackFragment(
         if (manager.getBoolean(getString(R.string.pref_key_show_dpad_skip), true)) {
             videoView.skipIndicator = skipIndicator
         }
+        videoView.doubleTapSeekOverlay = doubleTapSeekOverlay
 
         backCallback =
             requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, false) {
@@ -635,6 +638,11 @@ abstract class PlaybackFragment(
         StashExoPlayer.releasePlayer()
         player = preparePlayer()
         player!!.postSetupPlayer()
+        // Disable PlayerView's built-in click-to-toggle-controller AFTER setPlayer(),
+        // which re-registers the click listener. Our gesture detector in StashPlayerView
+        // is the sole controller toggle path for touch input.
+        videoView.videoSurfaceView?.setOnClickListener(null)
+        videoView.isClickable = false
         super.onStart()
     }
 
