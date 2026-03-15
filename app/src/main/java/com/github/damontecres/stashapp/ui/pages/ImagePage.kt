@@ -23,6 +23,7 @@ import androidx.compose.foundation.pager.PagerSnapDistance
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -499,7 +500,17 @@ fun ImagePage(
                         when (it.key) {
                             Key.DirectionLeft, Key.DirectionUpLeft, Key.DirectionDownLeft -> {
                                 if (ps != null) {
-                                    scope.launch { ps.animateScrollToPage(ps.currentPage - 1) }
+                                    val target = ps.currentPage - 1
+                                    if (target >= 0) {
+                                        scope.launch { ps.animateScrollToPage(target) }
+                                    } else {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                R.string.slideshow_at_beginning,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
                                 } else if (!viewModel.previousImage()) {
                                     Toast
                                         .makeText(
@@ -512,7 +523,17 @@ fun ImagePage(
 
                             Key.DirectionRight, Key.DirectionUpRight, Key.DirectionDownRight -> {
                                 if (ps != null) {
-                                    scope.launch { ps.animateScrollToPage(ps.currentPage + 1) }
+                                    val target = ps.currentPage + 1
+                                    if (target < ps.pageCount) {
+                                        scope.launch { ps.animateScrollToPage(target) }
+                                    } else {
+                                        Toast
+                                            .makeText(
+                                                context,
+                                                R.string.no_more_images,
+                                                Toast.LENGTH_SHORT,
+                                            ).show()
+                                    }
                                 } else if (!viewModel.nextImage()) {
                                     Toast
                                         .makeText(
@@ -680,15 +701,20 @@ fun ImagePage(
                 // HorizontalPager path — persistent composition per page
                 val currentPager = pager
                 if (currentPager != null) {
-                    val pagerState = rememberPagerState(
-                        initialPage = startPosition,
-                        pageCount = { currentPager.size },
-                    )
+                    // Key on currentPager so that pagerState is recreated when sort/filter changes
+                    val pagerState = key(currentPager) {
+                        rememberPagerState(
+                            initialPage = 0,
+                            pageCount = { currentPager.size.coerceAtLeast(0) },
+                        )
+                    }
                     pagerStateRef = pagerState
 
-                    LaunchedEffect(Unit) {
+                    LaunchedEffect(currentPager) {
                         viewModel.scrollToPage.collect { targetPage ->
-                            pagerState.animateScrollToPage(targetPage)
+                            if (targetPage in 0 until pagerState.pageCount) {
+                                pagerState.animateScrollToPage(targetPage)
+                            }
                         }
                     }
 
@@ -704,11 +730,13 @@ fun ImagePage(
                     // Prefetch thumbnails for N±3 (beyond composed viewport of N±2)
                     LaunchedEffect(pagerState.settledPage) {
                         val currentPage = pagerState.settledPage
+                        val pagerSize = currentPager.size
+                        if (pagerSize <= 0) return@LaunchedEffect
                         val imageLoader = context.imageLoader
                         for (offset in listOf(-3, 3)) {
                             launch {
                                 val targetPage = currentPage + offset
-                                if (targetPage in 0 until currentPager.size) {
+                                if (targetPage in 0 until pagerSize) {
                                     val pageData = currentPager.get(targetPage)
                                     val thumbnailUrl = pageData?.paths?.thumbnail
                                     if (thumbnailUrl.isNotNullOrBlank()) {

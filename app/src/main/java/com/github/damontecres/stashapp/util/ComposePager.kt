@@ -42,7 +42,8 @@ class ComposePager<T : StashData>(
             }
             return item
         } else {
-            throw IndexOutOfBoundsException("$index of $totalCount")
+            Log.w(TAG, "get($index) out of bounds (totalCount=$totalCount), returning null")
+            return null
         }
     }
 
@@ -55,12 +56,13 @@ class ComposePager<T : StashData>(
             }
             return item
         } else {
-            throw IndexOutOfBoundsException("$position of $totalCount")
+            Log.w(TAG, "getBlocking($position) out of bounds (totalCount=$totalCount), returning null")
+            return null
         }
     }
 
     override val size: Int
-        get() = totalCount
+        get() = totalCount.coerceAtLeast(0)
 
     private fun fetchPage(position: Int): Job =
         scope.launchIO {
