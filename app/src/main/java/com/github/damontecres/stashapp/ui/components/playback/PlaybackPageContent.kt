@@ -458,13 +458,14 @@ fun PlaybackPageContent(
     onClickPlaylistItem: ((Int) -> Unit)?,
     itemOnClick: ItemOnClicker<Any>,
     modifier: Modifier = Modifier,
+    playlistOffset: Int = 0,
     controlsEnabled: Boolean = true,
     viewModel: PlaybackViewModel = viewModel(),
     startPosition: Long = C.TIME_UNSET,
 ) {
     var savedStartPosition by rememberSaveable(startPosition) { mutableLongStateOf(startPosition) }
     var currentPlaylistIndex by rememberSaveable(startIndex) { mutableIntStateOf(startIndex) }
-    if (playlist.isEmpty() || playlist.size < currentPlaylistIndex) {
+    if (playlist.isEmpty() || playlist.size <= currentPlaylistIndex) {
         return
     }
 
@@ -1039,6 +1040,7 @@ fun PlaybackPageContent(
                 pager = playlistPager,
                 onClickPlaylistItem = onClickPlaylistItem,
                 modifier = Modifier,
+                playlistOffset = playlistOffset,
             )
         }
         videoFilter?.let {

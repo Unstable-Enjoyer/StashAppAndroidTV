@@ -28,6 +28,7 @@ fun PlaylistListDialog(
     pager: ComposePager<StashData>,
     onClickPlaylistItem: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    playlistOffset: Int = 0,
 ) {
     if (show) {
         Dialog(
@@ -41,7 +42,7 @@ fun PlaylistListDialog(
             }
             PlaylistList(
                 mediaItemCount = pager.size,
-                currentIndex = player.currentMediaItemIndex,
+                currentIndex = player.currentMediaItemIndex + playlistOffset,
                 mediaItemCountOffset = 0,
                 items =
                     MappedList(pager) { index, item ->
