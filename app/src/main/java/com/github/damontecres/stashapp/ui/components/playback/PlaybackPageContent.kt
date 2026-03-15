@@ -7,8 +7,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -36,6 +36,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
@@ -512,6 +513,11 @@ fun PlaybackPageContent(
 
     var contentCurrentPosition by remember { mutableLongStateOf(0L) }
 
+    // Double-tap seek overlay state
+    var seekOverlayVisible by remember { mutableStateOf(false) }
+    var seekOverlayForward by remember { mutableStateOf(true) }
+    var seekOverlaySeconds by remember { mutableLongStateOf(0L) }
+
     var createMarkerPosition by remember { mutableLongStateOf(-1L) }
     var playingBeforeDialog by remember { mutableStateOf(false) }
 
@@ -782,17 +788,50 @@ fun PlaybackPageContent(
             player = player,
             surfaceType = SURFACE_TYPE_SURFACE_VIEW,
             modifier =
-                scaledModifier.clickable(
-                    enabled = !isTvDevice,
-                    indication = null,
-                    interactionSource = null,
-                ) {
-                    if (controllerViewState.controlsVisible) {
-                        controllerViewState.hideControls()
+                scaledModifier.then(
+                    if (!isTvDevice) {
+                        Modifier.pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = {
+                                    if (controllerViewState.controlsVisible) {
+                                        controllerViewState.hideControls()
+                                    } else {
+                                        controllerViewState.showControls()
+                                    }
+                                },
+                                onDoubleTap = { offset ->
+                                    val isForward = offset.x > size.width / 2
+                                    if (seekOverlayForward != isForward) seekOverlaySeconds = 0L
+                                    if (isForward) {
+                                        player.seekForward()
+                                        val secs = player.seekForwardIncrement / 1000
+                                        seekOverlaySeconds = seekOverlaySeconds + secs
+                                        seekOverlayForward = true
+                                        seekOverlayVisible = true
+                                    } else {
+                                        player.seekBack()
+                                        val secs = player.seekBackIncrement / 1000
+                                        seekOverlaySeconds = seekOverlaySeconds + secs
+                                        seekOverlayForward = false
+                                        seekOverlayVisible = true
+                                    }
+                                },
+                            )
+                        }
                     } else {
-                        controllerViewState.showControls()
-                    }
-                },
+                        Modifier
+                    },
+                ),
+        )
+        // Double-tap seek overlay
+        DoubleTapSeekOverlay(
+            isVisible = seekOverlayVisible,
+            isForward = seekOverlayForward,
+            seconds = seekOverlaySeconds,
+            onHide = {
+                seekOverlayVisible = false
+                seekOverlaySeconds = 0L
+            },
         )
         if (presentationState.coverSurface) {
             Box(

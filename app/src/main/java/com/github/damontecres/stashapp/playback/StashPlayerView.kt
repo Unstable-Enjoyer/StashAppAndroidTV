@@ -2,6 +2,7 @@ package com.github.damontecres.stashapp.playback
 
 import android.content.Context
 import android.util.AttributeSet
+import android.util.Log
 import android.view.GestureDetector
 import android.view.KeyEvent
 import android.view.MotionEvent
@@ -37,19 +38,34 @@ class StashPlayerView(
     var skipIndicator: SkipIndicator? = null
     var doubleTapSeekOverlay: DoubleTapSeekOverlay? = null
 
-    private val gestureDetector = GestureDetectorCompat(context, DoubleTapGestureListener())
+    private val gestureDetector = GestureDetectorCompat(context, DoubleTapGestureListener()).apply {
+        setIsLongpressEnabled(false)
+    }
 
     @OptIn(UnstableApi::class)
     override fun dispatchTouchEvent(event: MotionEvent): Boolean {
-        if (!isControllerFullyVisible) {
-            // Controller hidden: gesture detector handles all touches.
-            // Consume event to prevent PlayerView's onTouchEvent from
-            // immediately showing the controller (which kills double-tap).
-            gestureDetector.onTouchEvent(event)
-            return true
+        Log.d(TAG, "dispatchTouchEvent: action=${event.actionMasked} x=${event.x.toInt()} y=${event.y.toInt()} controllerVisible=$isControllerFullyVisible")
+
+        // Always let gesture detector see every touch for double-tap detection
+        val gestureResult = gestureDetector.onTouchEvent(event)
+        Log.d(TAG, "gestureDetector.onTouchEvent returned: $gestureResult")
+
+        if (isControllerFullyVisible) {
+            // Controller visible: let PlayerView handle button/seekbar touches too
+            super.dispatchTouchEvent(event)
         }
-        // Controller visible: let super route to buttons/seekbar
-        return super.dispatchTouchEvent(event)
+
+        return true
+    }
+
+    // Override performClick to prevent PlayerView's default toggleControllerVisibility()
+    // from fighting with our gesture detector's controller toggle logic.
+    @OptIn(UnstableApi::class)
+    override fun performClick(): Boolean {
+        // Do NOT call super.performClick() — PlayerView.performClick() calls
+        // toggleControllerVisibility() which double-toggles the controller
+        // when our gesture listener also toggles it.
+        return true
     }
 
     @OptIn(UnstableApi::class)
@@ -115,17 +131,18 @@ class StashPlayerView(
     @OptIn(UnstableApi::class)
     private inner class DoubleTapGestureListener : GestureDetector.SimpleOnGestureListener() {
         override fun onSingleTapConfirmed(e: MotionEvent): Boolean {
+            Log.d(TAG, "onSingleTapConfirmed: controllerVisible=$isControllerFullyVisible")
             // Toggle controller visibility on single tap
             if (isControllerFullyVisible) {
                 hideController()
             } else {
                 showController()
             }
-            performClick()
             return true
         }
 
         override fun onDoubleTap(e: MotionEvent): Boolean {
+            Log.d(TAG, "onDoubleTap: enabled=$doubleTapSeekEnabled player=${player != null} overlay=${doubleTapSeekOverlay != null} x=${e.x.toInt()} width=$width")
             if (!doubleTapSeekEnabled) return false
             val currentPlayer = player ?: return false
             val isForward = e.x > width / 2
@@ -133,10 +150,12 @@ class StashPlayerView(
             if (isForward) {
                 currentPlayer.seekForward()
                 val seekSeconds = currentPlayer.seekForwardIncrement / 1000
+                Log.d(TAG, "onDoubleTap: seeking forward ${seekSeconds}s")
                 doubleTapSeekOverlay?.showSeek(true, seekSeconds)
             } else {
                 currentPlayer.seekBack()
                 val seekSeconds = currentPlayer.seekBackIncrement / 1000
+                Log.d(TAG, "onDoubleTap: seeking back ${seekSeconds}s")
                 doubleTapSeekOverlay?.showSeek(false, seekSeconds)
             }
             return true
