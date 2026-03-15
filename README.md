@@ -1,4 +1,5 @@
 # Stash App for Android TV
+Forked from "https://github.com/damontecres/StashAppAndroidTV"  by damontecres
 
 This is an Android TV app for browsing images and playing scenes from a [Stash](https://github.com/stashapp/stash) server. Many devices running Android TV are supported, including Amazon Fire TV devices. See [device compatibility](https://github.com/damontecres/StashAppAndroidTV/wiki/Device-Compatibility) for more information.
 
