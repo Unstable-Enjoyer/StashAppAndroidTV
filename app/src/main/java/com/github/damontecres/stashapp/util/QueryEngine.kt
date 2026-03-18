@@ -17,6 +17,7 @@ import com.github.damontecres.stashapp.api.FindJobQuery
 import com.github.damontecres.stashapp.api.FindMarkersQuery
 import com.github.damontecres.stashapp.api.FindPerformersQuery
 import com.github.damontecres.stashapp.api.FindSavedFilterQuery
+import com.github.damontecres.stashapp.api.FindAllSavedFiltersQuery
 import com.github.damontecres.stashapp.api.FindSavedFiltersQuery
 import com.github.damontecres.stashapp.api.FindScenesQuery
 import com.github.damontecres.stashapp.api.FindSlimImagesQuery
@@ -448,6 +449,15 @@ class QueryEngine(
 
     suspend fun getSavedFilters(dataType: DataType): List<SavedFilter> {
         val query = FindSavedFiltersQuery(dataType.filterMode)
+        return executeQuery(query)
+            .data
+            ?.findSavedFilters
+            ?.map { it.savedFilter }
+            .orEmpty()
+    }
+
+    suspend fun getAllSavedFilters(): List<SavedFilter> {
+        val query = FindAllSavedFiltersQuery()
         return executeQuery(query)
             .data
             ?.findSavedFilters

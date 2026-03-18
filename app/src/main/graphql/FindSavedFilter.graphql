@@ -29,6 +29,13 @@ fragment SavedFilter on SavedFilter {
   __typename
 }
 
+query FindAllSavedFilters {
+  findSavedFilters {
+    ...SavedFilter
+    __typename
+  }
+}
+
 mutation SaveFilter($input: SaveFilterInput!) {
   saveFilter(input: $input) {
     ...SavedFilter
