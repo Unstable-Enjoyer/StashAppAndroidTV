@@ -77,6 +77,11 @@
             android:id="@+id/tags_button"
             android:text="@string/stashapp_tags"
             style="@style/TitleBarButton" />
+
+        <Button
+            android:id="@+id/reels_button"
+            android:text="@string/reels"
+            style="@style/TitleBarButton" />
     </LinearLayout>
 
     <ImageButton

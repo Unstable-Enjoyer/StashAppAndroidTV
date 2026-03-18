@@ -237,6 +237,10 @@ class NavigationManagerLeanback(
                 Destination.ChooseTheme -> {
                     throw IllegalArgumentException("ChooseTheme not supported unless using Compose")
                 }
+
+                Destination.Reels -> {
+                    throw IllegalArgumentException("Reels not supported unless using Compose")
+                }
             }
 
         fragment.arguments = Bundle().putDestination(destination)

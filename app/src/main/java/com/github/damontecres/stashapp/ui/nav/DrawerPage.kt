@@ -29,6 +29,15 @@ sealed interface DrawerPage : Parcelable {
     }
 
     @Parcelize
+    data object ReelsPage : DrawerPage {
+        @IgnoredOnParcel
+        override val iconString = R.string.fa_film
+
+        @IgnoredOnParcel
+        override val name = R.string.reels
+    }
+
+    @Parcelize
     data object SettingPage : DrawerPage {
         // Unused
         @IgnoredOnParcel

@@ -39,6 +39,7 @@
     <string name="failed_update">Failed to update</string>
     <string name="advanced_settings">Advanced Settings</string>
     <string name="home">Home</string>
+    <string name="reels">Reels</string>
 
     <string name="app_update_url" translatable="false">https://api.github.com/repos/damontecres/StashAppAndroidTV/releases/latest</string>
 

@@ -95,7 +95,7 @@ fun ApplicationContent(
                 }
 
                 is SlimSceneData if quickPlay -> {
-                    val continuousPlayback = preferences.interfacePreferences.continuousPlayback
+                    val continuousPlayback = !preferences.interfacePreferences.continuousPlaybackDisabled
                     if (continuousPlayback && filterAndPosition != null) {
                         navigationManager.navigate(
                             Destination.Playlist(
@@ -179,6 +179,7 @@ fun ApplicationContent(
                     .filter { server.serverPreferences.showMenuItem(it) }
                     .map { DrawerPage.DataTypePage(it) },
             )
+            add(DrawerPage.ReelsPage)
             add(DrawerPage.SettingPage)
         }
     val defaultSelection: DrawerPage = DrawerPage.HomePage
@@ -253,6 +254,10 @@ fun ApplicationContent(
                         }
                     }
 
+                    Destination.Reels -> {
+                        DrawerPage.ReelsPage
+                    }
+
                     else -> {
                         null
                     }
@@ -287,6 +292,10 @@ fun ApplicationContent(
                                 } else {
                                     Destination.SettingsPin
                                 }
+                            }
+
+                            DrawerPage.ReelsPage -> {
+                                Destination.Reels
                             }
 
                             is DrawerPage.DataTypePage -> {

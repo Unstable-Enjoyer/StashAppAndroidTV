@@ -45,6 +45,7 @@ class MainTitleView(
     private val markersButton: Button
     private val imagesButton: Button
     private val galleriesButton: Button
+    private val reelsButton: Button
 
     private val mTitleViewAdapter =
         object : TitleViewAdapter() {
@@ -130,6 +131,12 @@ class MainTitleView(
         galleriesButton = root.findViewById(R.id.galleries_button)
         galleriesButton.setOnClickListener(ClickListener(DataType.GALLERY))
         galleriesButton.onFocusChangeListener = onFocusChangeListener
+
+        reelsButton = root.findViewById(R.id.reels_button)
+        reelsButton.setOnClickListener {
+            serverViewModel.navigationManager.navigate(Destination.Reels)
+        }
+        reelsButton.onFocusChangeListener = onFocusChangeListener
     }
 
     override fun getTitleViewAdapter(): TitleViewAdapter = mTitleViewAdapter

@@ -159,6 +159,9 @@ sealed class Destination(
     @Serializable
     data object LicenseInfo : Destination(true)
 
+    @Serializable
+    data object Reels : Destination(true)
+
     override fun describeContents(): Int = 0
 
     override fun writeToParcel(

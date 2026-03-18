@@ -24,6 +24,7 @@ import com.github.damontecres.stashapp.ui.pages.MarkerTimestampPage
 import com.github.damontecres.stashapp.ui.pages.PerformerPage
 import com.github.damontecres.stashapp.ui.pages.PlaybackPage
 import com.github.damontecres.stashapp.ui.pages.PlaylistPlaybackPage
+import com.github.damontecres.stashapp.ui.pages.ReelsPage
 import com.github.damontecres.stashapp.ui.pages.SceneDetailsPage
 import com.github.damontecres.stashapp.ui.pages.SearchPage
 import com.github.damontecres.stashapp.ui.pages.SettingsPage
@@ -179,6 +180,15 @@ fun DestinationContent(
                 server = server,
                 uiConfig = composeUiConfig,
                 modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        Destination.Reels -> {
+            ReelsPage(
+                server = server,
+                uiConfig = composeUiConfig,
+                navigationManager = navManager,
+                modifier = modifier,
             )
         }
 
