@@ -81,13 +81,13 @@ class FilterParser(
 
     fun convertHierarchicalMultiCriterionInput(it: Map<String, *>?): HierarchicalMultiCriterionInput? =
         if (it != null) {
-            val values = it["value"]!! as Map<String, *>
-            val items = mapToIds(values["items"])
-            val excludes = mapToIds(values["excluded"])
+            val values = it["value"] as? Map<String, *>
+            val items = values?.let { v -> mapToIds(v["items"]) }
+            val excludes = values?.let { v -> mapToIds(v["excluded"]) }
             HierarchicalMultiCriterionInput(
                 value = Optional.presentIfNotNull(items),
                 modifier = CriterionModifier.valueOf(it["modifier"]!!.toString()),
-                depth = Optional.presentIfNotNull(values["depth"]?.toString()?.toIntOrNull()),
+                depth = Optional.presentIfNotNull(values?.get("depth")?.toString()?.toIntOrNull()),
                 excludes = Optional.presentIfNotNull(excludes),
             )
         } else {
