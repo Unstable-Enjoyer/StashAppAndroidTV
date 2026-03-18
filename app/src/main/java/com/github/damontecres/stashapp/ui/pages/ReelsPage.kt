@@ -142,12 +142,14 @@ fun ReelsPage(
         }
 
     if (isTouch && windowInsetsController != null) {
-        DisposableEffect(Unit) {
+        LaunchedEffect(controlsVisible, activeOverlay) {
             windowInsetsController.systemBarsBehavior =
                 WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-            windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
+            windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+        }
+        DisposableEffect(Unit) {
             onDispose {
-                windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
+                windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
             }
         }
     }

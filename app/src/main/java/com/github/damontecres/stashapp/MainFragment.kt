@@ -329,6 +329,12 @@ class MainFragment :
                             }
                         }
                     }
+                    // Restore scroll position after all rows are loaded
+                    currentPosition?.let { pos ->
+                        withContext(Dispatchers.Main) {
+                            setSelectedPosition(pos.row, false)
+                        }
+                    }
                 }
             } catch (ex: QueryEngine.StashNotConfiguredException) {
                 Log.e(TAG, "StashNotConfiguredException", ex)
