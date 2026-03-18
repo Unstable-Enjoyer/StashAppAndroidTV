@@ -182,6 +182,7 @@ fun MainPage(
         }
         viewModel.updateStatistics()
     }
+    var initialFocusDone by rememberSaveable { mutableStateOf(false) }
     if (frontPageRows.isEmpty()) {
         Box(modifier = modifier.fillMaxSize()) {
             CircularProgress(
@@ -193,7 +194,10 @@ fun MainPage(
         }
     } else {
         LaunchedEffect(server, frontPageRows) {
-            focusRequester.tryRequestFocus()
+            if (!initialFocusDone && frontPageRows.isNotEmpty()) {
+                focusRequester.tryRequestFocus()
+                initialFocusDone = true
+            }
         }
         HomePage(
             modifier = modifier.focusRequester(focusRequester),
@@ -223,11 +227,7 @@ fun HomePage(
     var focusedIndex by rememberSaveable { mutableStateOf(RowColumn(0, 0)) }
     var focusedRow by rememberSaveable { mutableIntStateOf(0) }
 
-    val listState = rememberLazyListState()
-
-    LaunchedEffect(focusedIndex) {
-        listState.animateScrollToItem(focusedRow)
-    }
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = focusedRow)
 
     Box(
         modifier =
@@ -364,7 +364,7 @@ fun HomePageRow(
     modifier: Modifier = Modifier,
 ) {
     val navigationManager = LocalGlobalContext.current.navigationManager
-    val clickableHeaders = uiConfig.preferences.interfacePreferences.clickableRowHeaders
+    val clickableHeaders = !uiConfig.preferences.interfacePreferences.clickableRowHeadersDisabled
     Column(modifier = modifier) {
         ProvideTextStyle(MaterialTheme.typography.titleLarge.copy(color = MaterialTheme.colorScheme.onBackground)) {
             Text(

@@ -45,11 +45,14 @@ message InterfacePreferences {
 
   bool dpad_skip_indicator = 22;
   bool quick_play_disabled = 23;
-  bool swipe_gallery = 24;
-
-  bool continuous_playback = 26;
+  reserved 24; // was swipe_gallery (non-inverted, defaulted to disabled)
+  reserved 26; // was continuous_playback (non-inverted, defaulted to disabled)
   bool prevent_screen_capture = 27;
-  bool clickable_row_headers = 28;
+  reserved 28; // was clickable_row_headers (non-inverted, defaulted to disabled)
+
+  bool swipe_gallery_disabled = 29;
+  bool continuous_playback_disabled = 30;
+  bool clickable_row_headers_disabled = 31;
 }
 
 enum TabType {

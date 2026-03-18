@@ -179,10 +179,10 @@ sealed interface StashPreference<T> {
             StashSwitchPreference(
                 title = R.string.swipe_gallery,
                 prefKey = R.string.pref_key_swipe_gallery,
-                defaultValue = false,
-                getter = { it.interfacePreferences.swipeGallery },
+                defaultValue = true,
+                getter = { !it.interfacePreferences.swipeGalleryDisabled },
                 setter = { prefs, value ->
-                    prefs.updateInterfacePreferences { swipeGallery = value }
+                    prefs.updateInterfacePreferences { swipeGalleryDisabled = !value }
                 },
                 summaryOn = R.string.swipe_gallery_summary_on,
                 summaryOff = R.string.swipe_gallery_summary_off,
@@ -192,9 +192,9 @@ sealed interface StashPreference<T> {
                 title = R.string.clickable_row_headers,
                 prefKey = R.string.pref_key_clickable_row_headers,
                 defaultValue = true,
-                getter = { it.interfacePreferences.clickableRowHeaders },
+                getter = { !it.interfacePreferences.clickableRowHeadersDisabled },
                 setter = { prefs, value ->
-                    prefs.updateInterfacePreferences { clickableRowHeaders = value }
+                    prefs.updateInterfacePreferences { clickableRowHeadersDisabled = !value }
                 },
                 summaryOn = R.string.clickable_row_headers_summary_on,
                 summaryOff = R.string.clickable_row_headers_summary_off,
@@ -551,9 +551,9 @@ sealed interface StashPreference<T> {
                 title = R.string.continuous_playback,
                 prefKey = R.string.pref_key_continuous_playback,
                 defaultValue = true,
-                getter = { it.interfacePreferences.continuousPlayback },
+                getter = { !it.interfacePreferences.continuousPlaybackDisabled },
                 setter = { prefs, value ->
-                    prefs.updateInterfacePreferences { continuousPlayback = value }
+                    prefs.updateInterfacePreferences { continuousPlaybackDisabled = !value }
                 },
                 summaryOn = R.string.continuous_playback_summary_on,
                 summaryOff = R.string.continuous_playback_summary_off,
@@ -1202,7 +1202,7 @@ sealed interface StashPreference<T> {
             StashSliderPreference(
                 title = R.string.image_disk_cache_size,
                 prefKey = R.string.pref_key_image_cache_size,
-                defaultValue = 100,
+                defaultValue = 250,
                 min = 25,
                 max = 500,
                 interval = 25,

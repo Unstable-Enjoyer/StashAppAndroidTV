@@ -136,7 +136,7 @@ fun ImagePage(
 ) {
     val context = LocalContext.current
     val isNotTvDevice = isNotTvDevice
-    val swipeGallery = uiConfig.preferences.interfacePreferences.swipeGallery
+    val swipeGallery = !uiConfig.preferences.interfacePreferences.swipeGalleryDisabled
     LaunchedEffect(server, filter) {
         val slideshowDelay = uiConfig.preferences.interfacePreferences.slideShowIntervalMs
 
