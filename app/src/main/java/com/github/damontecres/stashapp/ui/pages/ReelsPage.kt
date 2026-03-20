@@ -128,6 +128,9 @@ fun ReelsPage(
     var isScrubbing by remember { mutableStateOf(false) }
     var scrubPosition by remember { mutableLongStateOf(0L) }
 
+    val skipForwardMs = remember { uiConfig.preferences.playbackPreferences.skipForwardMs }
+    val skipBackMs = remember { uiConfig.preferences.playbackPreferences.skipBackwardMs }
+
     val focusRequester = remember { FocusRequester() }
     val haptics = LocalHapticFeedback.current
     val isTV = isTvDevice
@@ -445,14 +448,14 @@ fun ReelsPage(
                     }
                     Key.DirectionLeft -> {
                         if (player != null) {
-                            val newPos = (player.currentPosition - 10000).coerceAtLeast(0)
+                            val newPos = (player.currentPosition - skipBackMs).coerceAtLeast(0)
                             player.seekTo(newPos)
                         }
                         true
                     }
                     Key.DirectionRight -> {
                         if (player != null) {
-                            val newPos = (player.currentPosition + 10000)
+                            val newPos = (player.currentPosition + skipForwardMs)
                                 .coerceAtMost(player.duration.coerceAtLeast(0))
                             player.seekTo(newPos)
                         }
@@ -514,11 +517,11 @@ fun ReelsPage(
                                         val player = settledPlayer() ?: return@detectTapGestures
                                         val width = size.width
                                         if (offset.x > width / 2) {
-                                            val newPos = (player.currentPosition + 10000)
+                                            val newPos = (player.currentPosition + skipForwardMs)
                                                 .coerceAtMost(player.duration.coerceAtLeast(0))
                                             player.seekTo(newPos)
                                         } else {
-                                            val newPos = (player.currentPosition - 10000)
+                                            val newPos = (player.currentPosition - skipBackMs)
                                                 .coerceAtLeast(0)
                                             player.seekTo(newPos)
                                         }

@@ -35,8 +35,6 @@ import kotlin.time.Duration.Companion.milliseconds
 class UpdateChecker {
     companion object {
         private const val ASSET_NAME = "StashAppAndroidTV.apk"
-        private const val DEBUG_ASSET_NAME = "StashAppAndroidTV-debug.apk"
-        private const val RELEASE_ASSET_NAME = "StashAppAndroidTV-release.apk"
 
         private const val APK_MIME_TYPE = "application/vnd.android.package-archive"
 
@@ -107,16 +105,6 @@ class UpdateChecker {
             updateUrl: String,
         ): Release? {
             return withContext(Dispatchers.IO) {
-                val preferredAsset =
-                    if (PreferenceManager
-                            .getDefaultSharedPreferences(context)
-                            .getBoolean("updatePreferRelease", true)
-                    ) {
-                        RELEASE_ASSET_NAME
-                    } else {
-                        DEBUG_ASSET_NAME
-                    }
-
                 val client = StashClient.okHttpClient
                 val request =
                     Request
@@ -131,14 +119,30 @@ class UpdateChecker {
                         val version = Version.tryFromString(name)
                         val publishedAt = result.jsonObject["published_at"]?.jsonPrimitive?.contentOrNull
                         val body = result.jsonObject["body"]?.jsonPrimitive?.contentOrNull
-                        val downloadUrl =
+                        val apkAssets =
                             result.jsonObject["assets"]
                                 ?.jsonArray
-                                ?.firstOrNull { asset ->
-                                    val assetName =
-                                        asset.jsonObject["name"]?.jsonPrimitive?.contentOrNull
-                                    assetName == ASSET_NAME || assetName == preferredAsset
-                                }?.jsonObject
+                                ?.filter { asset ->
+                                    asset.jsonObject["name"]?.jsonPrimitive?.contentOrNull
+                                        ?.endsWith(".apk") == true
+                                } ?: emptyList()
+
+                        val knownAbis = listOf("arm64-v8a", "armeabi-v7a", "armeabi", "x86_64", "x86")
+                        val abiMatch =
+                            Build.SUPPORTED_ABIS.firstNotNullOfOrNull { abi ->
+                                apkAssets.firstOrNull { asset ->
+                                    asset.jsonObject["name"]?.jsonPrimitive?.contentOrNull
+                                        ?.contains(abi) == true
+                                }
+                            }
+                        val selectedAsset =
+                            abiMatch ?: apkAssets.firstOrNull { asset ->
+                                val name = asset.jsonObject["name"]?.jsonPrimitive?.contentOrNull ?: ""
+                                knownAbis.none { abi -> name.contains(abi) }
+                            }
+                        val downloadUrl =
+                            selectedAsset
+                                ?.jsonObject
                                 ?.get("browser_download_url")
                                 ?.jsonPrimitive
                                 ?.contentOrNull

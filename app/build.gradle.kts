@@ -4,11 +4,18 @@ import com.android.build.gradle.internal.tasks.factory.dependsOn
 import com.google.protobuf.gradle.id
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.util.Base64
+import java.util.Properties
 
 val isCI = if (System.getenv("CI") != null) System.getenv("CI").toBoolean() else false
 val ffmpegModuleExists = project.file("libs/lib-decoder-ffmpeg-release.aar").exists()
 val av1ModuleExists = project.file("libs/lib-decoder-av1-release.aar").exists()
 val shouldSign = isCI && System.getenv("KEY_ALIAS") != null
+
+val keystorePropsFile = rootProject.file("keystore.properties")
+val hasLocalKeystore = keystorePropsFile.exists()
+val keystoreProps = Properties().apply {
+    if (hasLocalKeystore) keystorePropsFile.inputStream().use { load(it) }
+}
 
 plugins {
     alias(libs.plugins.android.application)
@@ -76,6 +83,14 @@ android {
                 enableV4Signing = true
             }
         }
+        if (hasLocalKeystore) {
+            create("local") {
+                storeFile = file(keystoreProps["storeFile"] as String)
+                storePassword = keystoreProps["storePassword"] as String
+                keyAlias = keystoreProps["keyAlias"] as String
+                keyPassword = keystoreProps["keyPassword"] as String
+            }
+        }
     }
 
     buildTypes {
@@ -89,6 +104,8 @@ android {
 
             if (shouldSign) {
                 signingConfig = signingConfigs.getByName("ci")
+            } else if (hasLocalKeystore) {
+                signingConfig = signingConfigs.getByName("local")
             }
         }
         debug {

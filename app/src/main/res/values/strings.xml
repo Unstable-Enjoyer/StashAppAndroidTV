@@ -41,7 +41,7 @@
     <string name="home">Home</string>
     <string name="reels">Reels</string>
 
-    <string name="app_update_url" translatable="false">https://api.github.com/repos/damontecres/StashAppAndroidTV/releases/latest</string>
+    <string name="app_update_url" translatable="false">https://api.github.com/repos/Unstable-Enjoyer/StashAppAndroidTV/releases/latest</string>
 
     <string name="setup_1_title">Server URL</string>
     <string name="setup_1_description">Configure the server URL</string>
